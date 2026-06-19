@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GraphOSINT | Intelligence Node Link Analysis</title>
+    <title>GraphOSINT | Intelligence Node Links</title>
     
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" integrity="sha512-uJ/84yEUZ5q8Sspv2oH1XGjZ/D/62H/uQ22Zf/Z4B9Vbz2+A//h1I2D6XFmI1NnK+p9T4YpBq7/P0f+fBwMw==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous"></script>
     <style>
         :root {
-            --bg-canvas: #09090B; /* Noir très profond */
+            --bg-canvas: #09090B;
             --bg-panel: #18181B;
             --border: #27272A;
             --text-main: #F4F4F5;
@@ -28,7 +27,6 @@
             background-color: var(--bg-canvas); color: var(--text-main);
             font-family: 'Inter', sans-serif;
             height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-            /* Grille tactique très discrète */
             background-image: 
                 linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
@@ -320,7 +318,14 @@
             </svg>`;
             return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace(/\n/g, '').replace(/\s+/g, ' '));
         }
-
+    
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[&<>'"]/g, function(tag) {
+                const charsToReplace = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
+                return charsToReplace[tag] || tag;
+            });
+        }
     function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -343,16 +348,15 @@
             email:   { title: 'E-MAIL', color: '#7C2D12', border: '#F97316', path: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z' },
             address: { title: 'LOCALISATION', color: '#4C1D95', border: '#8B5CF6', path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
             id:      { title: 'PSEUDO', color: '#831843', border: '#A1A1AA', path: 'M14 2H6c-1.11 0-2 .89-2 2v16c0 1.11.89 2 2 2h12c1.11 0 2-.89 2-2V8l-6-6zm-4 7c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm4 8H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z' },
-            ip:      { title: 'IP / RÉSEAU', color: '#164E63', border: '#06B6D4', path: 'M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z' },
+            ip:      { title: 'IP', color: '#164E63', border: '#06B6D4', path: 'M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z' },
             bank:    { title: 'FINANCE', color: '#18181B', border: '#A1A1AA', path: 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
-            note:    { title: 'NOTE OSINT', color: '#27272A', border: '#E4E4E7', path: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zM16 14H8v-2h8v2zM13 9V3.5L18.5 9H13z' }
+            note:    { title: 'NOTE', color: '#27272A', border: '#E4E4E7', path: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zM16 14H8v-2h8v2zM13 9V3.5L18.5 9H13z' }
         };
 
     var nodes = new vis.DataSet([]);
     var edges = new vis.DataSet([]);
     var network = null;
     
-    // Variables pour l'édition et le placement au clic
     var rightClickPos = null;
     var editingNodeId = null;
 
@@ -362,18 +366,18 @@
         
         var options = {
             nodes: {
-                shape: 'box', // On garde box, mais on la rend presque invisible
+                shape: 'box',
                 margin: { top: 10, bottom: 10, left: 10, right: 10 },
                 color: { 
-                    background: 'rgba(24, 24, 27, 0.8)', // Fond très sombre 
-                    border: 'rgba(255, 255, 255, 0.05)' // Bordure presque invisible
+                    background: 'rgba(24, 24, 27, 0.8)',
+                    border: 'rgba(255, 255, 255, 0.05)'
                 },
                 font: { 
                     color: '#F8FAFC', 
-                    size: 16, // Police un peu plus grande pour l'emoji
+                    size: 16,
                     face: 'JetBrains Mono', 
                     multi: 'html', 
-                    align: 'center' // Centre le texte sous l'emoji
+                    align: 'center'
                 },
                 shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', size: 10, x: 0, y: 5 }
             },
@@ -544,7 +548,7 @@
 
     function openNodeModalAtPos() {
         document.getElementById('contextMenu').style.display = 'none';
-        editingNodeId = null; // On est en mode Création
+        editingNodeId = null; 
         document.getElementById('nodeType').value = 'person';
         document.getElementById('nodeValue').value = '';
         document.getElementById('nodeModal').style.display = 'flex';
@@ -557,14 +561,12 @@
         var edge = edges.get(edgeId);
         
         var currentLabel = edge.label || "";
-        // Un prompt natif suffit amplement pour taper 2 mots
-        var newLabel = prompt("Qualifier ce lien (ex: MOT DE PASSE DE, HABITE À) :", currentLabel);
+        var newLabel = prompt("Qualifier ce lien (ex: PERE, MERE, HABITE CHEZ) :", currentLabel);
 
         if (newLabel !== null) {
             edges.update({
                 id: edgeId,
                 label: newLabel.toUpperCase(),
-                // Style professionnel pour le texte sur la ligne
                 font: { size: 11, color: '#A1A1AA', background: '#18181B', strokeWidth: 0, align: 'horizontal' }
             });
             showToast("Lien qualifié.", "success");
@@ -581,14 +583,12 @@
     function mergeNodes(targetId, sourceId) {
         document.getElementById('contextMenu').style.display = 'none';
 
-        // 1. Récupérer tous les traits connectés au nœud qui va disparaître
         var connectedEdges = network.getConnectedEdges(sourceId);
         var newEdges = [];
 
         connectedEdges.forEach(function(edgeId) {
             var edge = edges.get(edgeId);
             
-            // Sécurité : Si le trait relie déjà la Cible et la Source, on l'efface pour ne pas créer de boucle
             if ((edge.from === targetId && edge.to === sourceId) || (edge.from === sourceId && edge.to === targetId)) {
                 return;
             }
@@ -600,7 +600,7 @@
             newEdges.push(newEdge);
         });
 
-        // 2. Fusionner les métadonnées (Propriétés de la sidebar)
+        // 2. Fusionner les métadonnées
         var targetNode = nodes.get(targetId);
         var sourceNode = nodes.get(sourceId);
 
@@ -642,7 +642,6 @@
     }
 
     function openNodeModal() {
-        // Création standard (Bouton + de la barre)
         rightClickPos = null; 
         openNodeModalAtPos(); 
     }
@@ -693,7 +692,7 @@
             var center = rightClickPos ? rightClickPos : network.getViewPosition(); 
             var imgUrl;
 
-            // Logique de sélection de l'icône
+            // Logique icone
             if (type === 'id' && platform) {
                 // Si on a un nom de domaine, on prend le vrai logo
                 imgUrl = `https://icon.horse/icon/${platform}`;
@@ -705,8 +704,8 @@
             var nodeData = {
                 shape: 'circularImage',
                 image: imgUrl,
-                size: 24, // Taille de la bulle
-                label: value, // Affichage exclusif de la donnée brute
+                size: 24,
+                label: value,
                 color: { 
                     border: config.border || config.color, 
                     highlight: { border: '#FFFFFF' } 
@@ -716,7 +715,7 @@
                     color: '#F8FAFC',
                     face: 'JetBrains Mono',
                     size: 13,
-                    align: 'center' // Centre parfaitement sous la bulle
+                    align: 'center' 
                 },
                 details: { 
                     "Classification": config.title, 
@@ -743,7 +742,6 @@
             closeNodeModal();
         }
 
-    // --- BARRE LATÉRALE & EXPORTS (Inchangés) ---
         // --- BARRE LATÉRALE (Notes & Propriétés) ---
         function openSidebar(node) {
             const sidebar = document.getElementById('sidebar');
@@ -755,7 +753,8 @@
                     if (key === "TypeKey" || key === "Notes" || key === "Classification") continue;
                     
                     if (key === "Plateforme") {
-                        let faviconUrl = `https://icon.horse/icon/${value}`;
+                        let safeValue = escapeHTML(value);
+                        let faviconUrl = `https://icon.horse/icon/${safeValue}`;
                         html += `
                             <div class="data-group">
                                 <div class="data-label">${key}</div>
@@ -765,13 +764,14 @@
                                 </div>
                             </div>`;
                     } else {
-                        html += `<div class="data-group"><div class="data-label">${key}</div><div class="data-value">${value}</div></div>`;
+                        let safeKey = escapeHTML(key);
+                        let safeValue = escapeHTML(value);
+                        html += `<div class="data-group"><div class="data-label">${safeKey}</div><div class="data-value">${safeValue}</div></div>`;
                     }
                 }
                 
                 html += `<div class="data-group" style="border-left: 2px solid var(--border); padding-left: 10px; background: transparent;"><div class="data-label">Internal Hash</div><div class="data-value" style="font-size:0.7rem; color: var(--text-muted); border: none; padding: 0;">${node.id}</div></div>`;
 
-                // --- NOUVEAU BLOC MÉMO ---
                 let notesContent = node.details.Notes || "";
                 html += `
                     <div class="memo-container">
@@ -790,7 +790,6 @@
             sidebar.classList.add('active');
         }
 
-        // Fonction d'auto-sauvegarde spécifique aux notes avec retour visuel
         function saveNodeNotes(nodeId) {
             var nodeToUpdate = nodes.get(nodeId);
             if (nodeToUpdate) {
@@ -798,13 +797,11 @@
                 nodeToUpdate.details.Notes = newNotes;
                 nodes.update(nodeToUpdate); 
                 
-                // Animation du petit texte "Sync" en haut à droite du mémo
+                // sync anim
                 var statusIndicator = document.getElementById('memo-status');
                 if (statusIndicator) {
                     statusIndicator.classList.add('saving');
-                    // On annule le timer précédent si on tape vite
                     clearTimeout(window.memoTimeout);
-                    // On cache le texte "Sync" après 1 seconde d'inactivité
                     window.memoTimeout = setTimeout(() => {
                         statusIndicator.classList.remove('saving');
                     }, 1000);
@@ -830,10 +827,9 @@
         // --- MACHINE À REMONTER LE TEMPS (UNDO / REDO) ---
         var historyStack = [];
         var historyIndex = -1;
-        var isRestoring = false; // Verrou de sécurité pour éviter les boucles infinies
+        var isRestoring = false;
 
         function saveSnapshot() {
-            // On ne sauvegarde pas si on est déjà en train de restaurer une sauvegarde
             if (isRestoring || !network) return;
 
             var currentPositions = network.getPositions();
@@ -847,15 +843,12 @@
             
             var snapshot = JSON.stringify({ nodes: nodesData, edges: edges.get() });
 
-            // Évite de sauvegarder des doublons consécutifs
             if (historyIndex >= 0 && historyStack[historyIndex] === snapshot) return;
 
-            // Si on fait une action après un "Undo", on écrase le futur
             historyStack = historyStack.slice(0, historyIndex + 1);
             historyStack.push(snapshot);
 
-            // Limite la mémoire à 50 actions pour ne pas surcharger la RAM
-            if (historyStack.length > 50) {
+            if (historyStack.length > 10) {
                 historyStack.shift();
             } else {
                 historyIndex++;
@@ -877,7 +870,6 @@
                 console.error("Erreur de restauration", e);
             }
             
-            // On libère le verrou et on sauvegarde dans le LocalStorage
             isRestoring = false;
             autoSaveGraph(); 
         }
@@ -900,9 +892,7 @@
             }
         }
 
-        // --- ECOUTEUR CLAVIER POUR LES RACCOURCIS ---
         document.addEventListener('keydown', function(e) {
-            // Si on tape dans un input ou un textarea (ex: le mémo), on ne déclenche pas le raccourci global
             var activeTag = document.activeElement.tagName.toLowerCase();
             if (activeTag === 'input' || activeTag === 'textarea') return;
 
@@ -927,7 +917,7 @@
     function exportPNG() {
         var canvas = document.querySelector('#mynetwork canvas');
         var link = document.createElement('a');
-        link.download = 'GraphOSINT_Intelligence.png';
+        link.download = 'GraphOSINT-export.png';
         link.href = canvas.toDataURL('image/png', 1.0);
         link.click();
         showToast("Export PNG terminé.", "success");
@@ -943,14 +933,14 @@
             var imgX = (297 - canvas.width * ratio) / 2;
             var imgY = (210 - canvas.height * ratio) / 2;
             pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', imgX, imgY, canvas.width * ratio, canvas.height * ratio);
-            pdf.save('GraphOSINT_Intelligence.pdf');
+            pdf.save('GraphOSINT-export.pdf');
             showToast("Export PDF terminé.", "success");
         }, 500);
     }
 
     function exportJSON() {
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ nodes: nodes.get(), edges: edges.get() }, null, 2));
-        var link = document.createElement('a'); link.href = dataStr; link.download = "GraphOSINT_Database.json"; link.click();
+        var link = document.createElement('a'); link.href = dataStr; link.download = "GraphOSINT-export.json"; link.click();
         showToast("Sauvegarde JSON réussie.", "success");
     }
 
@@ -961,12 +951,54 @@
         reader.onload = function(e) {
             try {
                 var data = JSON.parse(e.target.result);
-                if (data.nodes) nodes.add(data.nodes);
-                if (data.edges) edges.add(data.edges);
+                
+                var safeNodes = [];
+                if (data.nodes && Array.isArray(data.nodes)) {
+                    data.nodes.forEach(function(n) {
+                        if (n.id && n.details) {
+                            safeNodes.push({
+                                id: escapeHTML(String(n.id)),
+                                x: Number(n.x) || 0,
+                                y: Number(n.y) || 0,
+                                label: n.label ? String(n.label) : "", 
+                                shape: n.shape,
+                                image: n.image,
+                                size: Number(n.size) || 24,
+                                color: n.color,
+                                font: n.font,
+                                borderWidth: 2,
+                                details: n.details
+                            });
+                        }
+                    });
+                }
+
+                var safeEdges = [];
+                if (data.edges && Array.isArray(data.edges)) {
+                    data.edges.forEach(function(ed) {
+                        if (ed.from && ed.to) {
+                            safeEdges.push({
+                                id: escapeHTML(String(ed.id)),
+                                from: escapeHTML(String(ed.from)),
+                                to: escapeHTML(String(ed.to)),
+                                label: ed.label ? escapeHTML(String(ed.label)) : "",
+                                font: ed.font
+                            });
+                        }
+                    });
+                }
+
+                nodes.add(safeNodes);
+                edges.add(safeEdges);
+                
                 network.fit({animation: {duration: 1000}});
                 document.getElementById('fileInput').value = '';
                 showToast("Base de données chargée.", "success");
-            } catch (err) { showToast("Fichier JSON invalide.", "error"); }
+                
+            } catch (err) { 
+                console.error("Erreur de parsing:", err);
+                showToast("Fichier JSON invalide.", "error"); 
+            }
         };
         reader.readAsText(file);
     }
