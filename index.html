@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphOSINT | Intelligence Node Link Analysis</title>
+    
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg-canvas: #09090B; /* Noir très profond */
+            --bg-panel: #18181B;
+            --border: #27272A;
+            --text-main: #F4F4F5;
+            --text-muted: #A1A1AA;
+            --accent: #3B82F6;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-canvas); color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            /* Grille tactique très discrète */
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px; background-position: center center;
+        }
+
+        /* --- TOP BAR --- */
+        .topbar {
+            background: rgba(9, 9, 11, 0.9); border-bottom: 1px solid var(--border);
+            padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10;
+        }
+        .brand { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; color: #D4D4D8; }
+        .brand i { color: var(--accent); font-size: 1.4rem; }
+        
+        .toolbar-group { display: flex; gap: 8px; }
+        .btn-top {
+            background: transparent; border: 1px solid transparent; color: var(--text-muted);
+            padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-top:hover { background: var(--bg-panel); color: white; border-color: var(--border); }
+
+        /* --- WORKSPACE --- */
+        .workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
+        #mynetwork { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
+        
+        /* --- FLOATING TOOLBAR --- */
+        .floating-toolbar {
+            position: absolute; left: 24px; top: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 10;
+        }
+        .tool-btn {
+            width: 48px; height: 48px; border-radius: 12px; background: var(--bg-panel); border: 1px solid var(--border);
+            color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .tool-btn:hover { background: #27272A; color: white; transform: translateX(2px); }
+        .tool-btn.active { background: var(--accent); color: white; border-color: #60A5FA; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .tool-btn.danger:hover { background: #EF4444; color: white; border-color: #F87171; }
+        
+        /* Tooltip pour la barre d'outils */
+        .tool-btn::after {
+            content: attr(data-tooltip); position: absolute; left: 60px; background: var(--text-main); color: var(--bg-canvas);
+            padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+            opacity: 0; pointer-events: none; transition: 0.2s; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .tool-btn:hover::after { opacity: 1; left: 65px; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 350px; background: rgba(24, 24, 27, 0.95); border-left: 1px solid var(--border); backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute; right: 0; top: 0; bottom: 0; z-index: 20; box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        }
+        .sidebar.active { transform: translateX(0); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-title { margin: 0; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px; color: #E4E4E7;}
+        .close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; }
+        .close-btn:hover { color: white; }
+        .sidebar-content { padding: 20px; overflow-y: auto; }
+        .data-group { margin-bottom: 20px; }
+        .data-label { font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 6px; letter-spacing: 0.05em; }
+        .data-value { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #E4E4E7; word-break: break-all; background: #09090B; padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-box { background: #18181B; border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 450px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        .modal-title { margin: 0 0 24px 0; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 10px;}
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;}
+        .custom-select, .custom-input { width: 100%; background: #09090B; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+        .custom-input:focus, .custom-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 30px; }
+        .btn-modal { padding: 10px 20px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; transition: 0.2s; border: 1px solid transparent;}
+        .btn-cancel { background: transparent; color: var(--text-muted); }
+        .btn-cancel:hover { background: #27272A; color: white; }
+        .btn-confirm { background: var(--accent); color: white; }
+        .btn-confirm:hover { background: #2563EB; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+
+        .context-menu { 
+            position: fixed; /* FIXED : suit la souris à la perfection */
+            background: rgba(24, 24, 27, 0.85); 
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 8px; padding: 6px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.5); 
+            z-index: 9999; display: none; min-width: 240px; 
+        }
+
+        .menu-item { 
+            padding: 10px 14px; cursor: pointer; border-radius: 6px; transition: 0.1s; 
+            display: flex; align-items: center; gap: 12px; font-size: 0.85rem; font-weight: 500; 
+            color: #E4E4E7; letter-spacing: 0.02em; 
+        }
+        .menu-item i { font-size: 1.1rem; color: #9CA3AF; }
+        .menu-item:hover { background: var(--accent); color: white; }
+        .menu-item:hover i { color: white; }
+        .menu-separator { height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+        .menu-danger:hover { background: #EF4444 !important; color: white !important; }
+        .menu-danger:hover i { color: white !important; }
+
+        /* --- TOAST NOTIFICATIONS --- */
+        .toast-container { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 50; }
+        .toast {
+            background: #18181B; border: 1px solid var(--border); color: white; padding: 12px 24px; border-radius: 8px;
+            font-size: 0.85rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px;
+            opacity: 0; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-left: 4px solid #10B981; }
+        .toast.info { border-left: 4px solid #3B82F6; }
+        .toast.error { border-left: 4px solid #EF4444; }
+        /* --- NOTES / MÉMOS --- */
+        .memo-container {
+            margin-top: 24px;
+            background: rgba(9, 9, 11, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .memo-container:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1), inset 0 0 0 1px var(--accent);
+        }
+        .memo-header {
+            background: #18181B;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .memo-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-main);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .memo-title i { color: var(--accent); font-size: 1.1rem; }
+        
+        /* Indicateur de sauvegarde auto */
+        .memo-status {
+            font-size: 0.65rem;
+            color: #10B981; /* Vert succès */
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .memo-status.saving { opacity: 1; }
+        
+        .memo-textarea {
+            width: 100%;
+            min-height: 140px;
+            background: transparent;
+            border: none;
+            color: #E4E4E7;
+            padding: 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+        }
+        .memo-textarea::placeholder { color: #52525B; font-style: italic; }
+        
+        /* Scrollbar custom pour la zone de texte */
+        .memo-textarea::-webkit-scrollbar { width: 6px; }
+        .memo-textarea::-webkit-scrollbar-track { background: transparent; }
+        .memo-textarea::-webkit-scrollbar-thumb { background: #3F3F46; border-radius: 3px; }
+        .memo-textarea::-webkit-scrollbar-thumb:hover { background: #52525B; }
+        .vis-manipulation { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="brand"><i class="ph-fill ph-hexagon"></i> GraphOSINT <span style="color: #52525B; font-weight: 400;">| CORE</span></div>
+        <div class="toolbar-group">
+            <button class="btn-top" onclick="document.getElementById('fileInput').click()"><i class="ph ph-upload-simple"></i> Import JSON</button>
+            <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="importJSON(event)">
+            <button class="btn-top" onclick="exportJSON()"><i class="ph ph-floppy-disk"></i> Save JSON</button>
+            <div style="width: 1px; background: var(--border); margin: 0 8px;"></div>
+            <button class="btn-top" onclick="exportPNG()"><i class="ph ph-image"></i> Export PNG</button>
+            <button class="btn-top" onclick="exportPDF()"><i class="ph ph-file-pdf"></i> Export PDF</button>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="floating-toolbar">
+            <button class="tool-btn" data-tooltip="Créer une entité" onclick="openNodeModal()">
+                <i class="ph ph-plus"></i>
+            </button>
+            
+            <button class="tool-btn" data-tooltip="Annuler (Ctrl+Z)" onclick="undo()">
+                <i class="ph ph-arrow-u-up-left"></i>
+            </button>
+            <button class="tool-btn" data-tooltip="Rétablir (Ctrl+Y)" onclick="redo()">
+                <i class="ph ph-arrow-u-up-right"></i>
+            </button>
+            
+            <button class="tool-btn" id="btn-link" data-tooltip="Lier deux entités" onclick="toggleEdgeMode()" style="margin-top: 10px;">
+                <i class="ph ph-vector-two"></i>
+            </button>
+            <button class="tool-btn danger" data-tooltip="Supprimer la sélection" onclick="deleteSelected()">
+                <i class="ph ph-trash"></i>
+            </button>
+            <button class="tool-btn" data-tooltip="Réinitialiser l'espace" onclick="clearGraph()" style="margin-top: 20px;">
+                <i class="ph ph-broom"></i>
+            </button>
+        </div>
+
+        <div id="mynetwork"></div>
+
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h4 class="sidebar-title"><i class="ph-fill ph-scan"></i> Propriétés de l'Entité</h4>
+                <button class="close-btn" onclick="closeSidebar()"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="sidebar-content" class="sidebar-content"></div>
+        </div>
+
+        <div class="toast-container" id="toast-container"></div>
+        <div id="contextMenu" class="context-menu"></div>
+    </div>
+
+    <div class="modal-overlay" id="nodeModal">
+        <div class="modal-box">
+            <h3 class="modal-title"><i class="ph-fill ph-cube"></i> Nouvelle Entité</h3>
+            <div class="form-group">
+                <label class="form-label">Classification</label>
+                <select class="custom-select" id="nodeType">
+                    <option value="person">Cible Principale (Identité)</option>
+                    <option value="phone">Téléphone</option>
+                    <option value="email">Adresse E-mail</option>
+                    <option value="address">Localisation / Adresse</option>
+                    <option value="id">Identifiant / Pseudo</option>
+                    <option value="ip">Adresse IP / Domaine</option>
+                    <option value="bank">Finance / IBAN</option>
+                    <option value="note">Note d'analyse</option>
+                </select>
+           
+            <div class="form-group" id="platform-group" style="display: none;">
+                <label class="form-label">Plateforme (ex: twitter.com)</label>
+                <input type="text" class="custom-input" id="nodePlatform" placeholder="Domaine pour le logo..." autocomplete="off">
+            </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Valeur extraite</label>
+                <input type="text" class="custom-input" id="nodeValue" placeholder="ex: 192.168.1.1..." autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-modal btn-cancel" onclick="closeNodeModal()">Annuler</button>
+                <button class="btn-modal btn-confirm" onclick="saveNewNode()">Valider</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // --- UTILITAIRES ---
+    window.addEventListener('error', function(e) { if (e.message.includes('ResizeObserver')) e.stopImmediatePropagation(); });
+
+    function generateSafeUUID() {
+        if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+        return 'node_' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+    }
+
+    // --- GÉNÉRATEUR D'ICÔNES OSINT (SVG) ---
+        function createIconUrl(pathData, bgColor) {
+            const svg = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="128" height="128">
+                <circle cx="24" cy="24" r="24" fill="${bgColor}" />
+                <g transform="translate(12, 12)">
+                    <path fill="#FFFFFF" d="${pathData}"/>
+                </g>
+            </svg>`;
+            return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace(/\n/g, '').replace(/\s+/g, ' '));
+        }
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        let icon = 'ph-info';
+        if(type === 'success') icon = 'ph-check-circle';
+        if(type === 'error') icon = 'ph-warning-circle';
+        
+        toast.innerHTML = `<i class="ph-fill ${icon}" style="font-size: 1.2rem;"></i> <span>${message}</span>`;
+        container.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    // --- CONFIGURATION VECTORIELLE ---
+        const ENTITY_CONFIG = {
+            person:  { title: 'IDENTITÉ', color: '#0F172A', border: '#3B82F6', path: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+            phone:   { title: 'TÉLÉPHONE', color: '#064E3B', border: '#10B981', path: 'M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z' },
+            email:   { title: 'E-MAIL', color: '#7C2D12', border: '#F97316', path: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z' },
+            address: { title: 'LOCALISATION', color: '#4C1D95', border: '#8B5CF6', path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
+            id:      { title: 'PSEUDO', color: '#831843', border: '#A1A1AA', path: 'M14 2H6c-1.11 0-2 .89-2 2v16c0 1.11.89 2 2 2h12c1.11 0 2-.89 2-2V8l-6-6zm-4 7c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm4 8H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z' },
+            ip:      { title: 'IP / RÉSEAU', color: '#164E63', border: '#06B6D4', path: 'M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z' },
+            bank:    { title: 'FINANCE', color: '#18181B', border: '#A1A1AA', path: 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
+            note:    { title: 'NOTE OSINT', color: '#27272A', border: '#E4E4E7', path: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zM16 14H8v-2h8v2zM13 9V3.5L18.5 9H13z' }
+        };
+
+    var nodes = new vis.DataSet([]);
+    var edges = new vis.DataSet([]);
+    var network = null;
+    
+    // Variables pour l'édition et le placement au clic
+    var rightClickPos = null;
+    var editingNodeId = null;
+
+    function initGraph() {
+        var container = document.getElementById('mynetwork');
+        var data = { nodes: nodes, edges: edges };
+        
+        var options = {
+            nodes: {
+                shape: 'box', // On garde box, mais on la rend presque invisible
+                margin: { top: 10, bottom: 10, left: 10, right: 10 },
+                color: { 
+                    background: 'rgba(24, 24, 27, 0.8)', // Fond très sombre 
+                    border: 'rgba(255, 255, 255, 0.05)' // Bordure presque invisible
+                },
+                font: { 
+                    color: '#F8FAFC', 
+                    size: 16, // Police un peu plus grande pour l'emoji
+                    face: 'JetBrains Mono', 
+                    multi: 'html', 
+                    align: 'center' // Centre le texte sous l'emoji
+                },
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', size: 10, x: 0, y: 5 }
+            },
+            edges: { width: 2, color: { color: '#52525B', highlight: '#3B82F6' }, smooth: { type: 'continuous' } },
+            physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -80, centralGravity: 0.01, springLength: 150, springConstant: 0.08, damping: 0.4 } },
+            interaction: { hover: true, multiselect: true },
+            manipulation: {
+                enabled: false,
+                addEdge: function(edgeData, callback) {
+                    if (edgeData.from === edgeData.to) {
+                        showToast("Impossible de lier une entité à elle-même.", "error");
+                        callback(null);
+                    } else {
+                        callback(edgeData);
+                        showToast("Lien établi.", "success");
+                        network.disableEditMode();
+                        document.getElementById('btn-link').classList.remove('active');
+                    }
+                }
+            }
+            
+        };
+        
+        network = new vis.Network(container, data, options);
+
+        network.on("selectNode", function (params) { openSidebar(nodes.get(params.nodes[0])); });
+        network.on("deselectNode", function () { closeSidebar(); });
+
+            // --- GESTION DU MENU CONTEXTUEL INTELLIGENT ---
+        network.on("oncontext", function (params) {
+            params.event.preventDefault(); 
+            
+            var DOMPos = params.pointer.DOM;
+            rightClickPos = params.pointer.canvas; 
+            
+            var nodeId = network.getNodeAt(DOMPos);
+            var edgeId = network.getEdgeAt(DOMPos);
+            var selectedNodes = network.getSelectedNodes();
+            
+            var menu = document.getElementById('contextMenu');
+            
+            // 1. GESTION DE LA FUSION (2 nœuds sélectionnés)
+            if (selectedNodes.length === 2 && selectedNodes.includes(nodeId)) {
+                var sourceNodeId = selectedNodes.find(id => id !== nodeId); // Celui qu'on va absorber
+                menu.innerHTML = `
+                    <div class="menu-item" onclick="mergeNodes('${nodeId}', '${sourceNodeId}')"><i class="ph ph-git-merge"></i> Fusionner vers cette entité</div>
+                    <div class="menu-separator"></div>
+                    <div class="menu-item" onclick="document.getElementById('contextMenu').style.display='none'; network.unselectAll();"><i class="ph ph-x"></i> Annuler la sélection</div>
+                `;
+            } 
+            // 2. GESTION D'UN NŒUD SIMPLE
+            else if (nodeId) {
+                if (!selectedNodes.includes(nodeId)) network.selectNodes([nodeId]); 
+                openSidebar(nodes.get(nodeId)); 
+                
+                menu.innerHTML = `
+                    <div class="menu-item" onclick="editNode('${nodeId}')"><i class="ph ph-pencil-simple"></i> Modifier l'entité</div>
+                    <div class="menu-item" onclick="startLinking()"><i class="ph ph-link"></i> Lier à...</div>
+                    <div class="menu-separator"></div>
+                    <div class="menu-item menu-danger" onclick="deleteSpecificNode('${nodeId}')"><i class="ph ph-trash"></i> Supprimer</div>
+                `;
+            } 
+            // 3. GESTION D'UNE LIAISON (Trait)
+            else if (edgeId) {
+                network.selectEdges([edgeId]);
+                menu.innerHTML = `
+                    <div class="menu-item" onclick="labelEdge('${edgeId}')"><i class="ph ph-text-t"></i> Qualifier le lien</div>
+                    <div class="menu-separator"></div>
+                    <div class="menu-item menu-danger" onclick="deleteSpecificEdge('${edgeId}')"><i class="ph ph-trash"></i> Supprimer le lien</div>
+                `;
+            } 
+            // 4. GESTION DU VIDE
+            else {
+                network.unselectAll();
+                closeSidebar();
+                menu.innerHTML = `
+                    <div class="menu-item" onclick="openNodeModalAtPos()"><i class="ph ph-plus-circle"></i> Créer une entité ici</div>
+                    <div class="menu-separator"></div>
+                    <div class="menu-item" onclick="network.fit({animation: {duration: 800}})"><i class="ph ph-corners-out"></i> Recadrer la vue</div>
+                `;
+            }
+
+            // Affichage fluide
+            menu.style.display = 'block';
+            menu.style.opacity = '0';
+            var menuWidth = menu.offsetWidth;
+            var menuHeight = menu.offsetHeight;
+            var x = params.event.clientX;
+            var y = params.event.clientY;
+            if (x + menuWidth > window.innerWidth) x -= menuWidth;
+            if (y + menuHeight > window.innerHeight) y -= menuHeight;
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.style.opacity = '1';
+        });
+
+        // Cacher le menu contextuel si on clique ailleurs
+            network.on("click", function() {
+                document.getElementById('contextMenu').style.display = 'none';
+            });
+
+            // === 1. RESTAURATION DE LA SESSION AU DÉMARRAGE ===
+            var savedSession = localStorage.getItem('GraphOSINT_Autosave');
+            if (savedSession) {
+                try {
+                    var parsed = JSON.parse(savedSession);
+                    if (parsed.nodes && parsed.nodes.length > 0) {
+                        nodes.add(parsed.nodes);
+                        edges.add(parsed.edges || []);
+                        setTimeout(() => showToast("Session précédente restaurée.", "info"), 500);
+                    }
+                } catch (err) {
+                    console.error("Sauvegarde corrompue", err);
+                }
+            }
+
+            // === RESTAURATION DE LA SESSION AU DÉMARRAGE ===
+            var savedSession = localStorage.getItem('GraphOSINT_Autosave');
+            if (savedSession) {
+                try {
+                    var parsed = JSON.parse(savedSession);
+                    if (parsed.nodes && parsed.nodes.length > 0) {
+                        nodes.add(parsed.nodes);
+                        edges.add(parsed.edges || []);
+                        setTimeout(() => showToast("Session précédente restaurée.", "info"), 500);
+                    }
+                } catch (err) { console.error("Sauvegarde corrompue", err); }
+            }
+
+            // On prend une "Photo" initiale juste après le démarrage
+            setTimeout(saveSnapshot, 200);
+
+            // === DÉCLENCHEURS DE SAUVEGARDE ET D'HISTORIQUE ===
+            function handleGraphMutation() {
+                saveSnapshot();
+                autoSaveGraph();
+            }
+
+            nodes.on('*', handleGraphMutation);
+            edges.on('*', handleGraphMutation);
+            network.on("dragEnd", handleGraphMutation);
+
+    }
+
+    document.addEventListener('DOMContentLoaded', initGraph);
+// --- LOGIQUE DU MODAL (Apparition du champ Plateforme) ---
+    document.getElementById('nodeType').addEventListener('change', function(e) {
+        const platGroup = document.getElementById('platform-group');
+        if (e.target.value === 'id') {
+            platGroup.style.display = 'block';
+        } else {
+            platGroup.style.display = 'none';
+            document.getElementById('nodePlatform').value = ''; // On vide si on change d'avis
+        }
+    });
+    // --- ACTIONS DU MENU CONTEXTUEL ---
+    function startLinking() {
+        document.getElementById('contextMenu').style.display = 'none';
+        toggleEdgeMode();
+    }
+
+    function deleteSpecificNode(nodeId) {
+        document.getElementById('contextMenu').style.display = 'none';
+        nodes.remove(nodeId);
+        showToast("Entité supprimée.", "success");
+        closeSidebar();
+    }
+
+    function openNodeModalAtPos() {
+        document.getElementById('contextMenu').style.display = 'none';
+        editingNodeId = null; // On est en mode Création
+        document.getElementById('nodeType').value = 'person';
+        document.getElementById('nodeValue').value = '';
+        document.getElementById('nodeModal').style.display = 'flex';
+        document.getElementById('nodeValue').focus();
+    }
+
+    // --- FONCTION A : QUALIFIER UN LIEN ---
+    function labelEdge(edgeId) {
+        document.getElementById('contextMenu').style.display = 'none';
+        var edge = edges.get(edgeId);
+        
+        var currentLabel = edge.label || "";
+        // Un prompt natif suffit amplement pour taper 2 mots
+        var newLabel = prompt("Qualifier ce lien (ex: MOT DE PASSE DE, HABITE À) :", currentLabel);
+
+        if (newLabel !== null) {
+            edges.update({
+                id: edgeId,
+                label: newLabel.toUpperCase(),
+                // Style professionnel pour le texte sur la ligne
+                font: { size: 11, color: '#A1A1AA', background: '#18181B', strokeWidth: 0, align: 'horizontal' }
+            });
+            showToast("Lien qualifié.", "success");
+        }
+    }
+
+    function deleteSpecificEdge(edgeId) {
+        document.getElementById('contextMenu').style.display = 'none';
+        edges.remove(edgeId);
+        showToast("Lien supprimé.", "success");
+    }
+
+    // --- FONCTION B : FUSIONNER DEUX ENTITÉS ---
+    function mergeNodes(targetId, sourceId) {
+        document.getElementById('contextMenu').style.display = 'none';
+
+        // 1. Récupérer tous les traits connectés au nœud qui va disparaître
+        var connectedEdges = network.getConnectedEdges(sourceId);
+        var newEdges = [];
+
+        connectedEdges.forEach(function(edgeId) {
+            var edge = edges.get(edgeId);
+            
+            // Sécurité : Si le trait relie déjà la Cible et la Source, on l'efface pour ne pas créer de boucle
+            if ((edge.from === targetId && edge.to === sourceId) || (edge.from === sourceId && edge.to === targetId)) {
+                return;
+            }
+
+            // On copie le trait et on le redirige vers la Cible
+            var newEdge = { ...edge, id: generateSafeUUID() }; 
+            if (newEdge.from === sourceId) newEdge.from = targetId;
+            if (newEdge.to === sourceId) newEdge.to = targetId;
+            newEdges.push(newEdge);
+        });
+
+        // 2. Fusionner les métadonnées (Propriétés de la sidebar)
+        var targetNode = nodes.get(targetId);
+        var sourceNode = nodes.get(sourceId);
+
+        if(sourceNode.details && targetNode.details) {
+            for (const [key, value] of Object.entries(sourceNode.details)) {
+                if(key !== "TypeKey" && key !== "Classification") {
+                     if(!targetNode.details[key]) {
+                         targetNode.details[key] = value; // Ajoute les infos manquantes
+                     } else if (targetNode.details[key] !== value) {
+                         targetNode.details[key + " (Ancienne)"] = value; // Garde la trace des conflits
+                     }
+                }
+            }
+            nodes.update(targetNode);
+        }
+
+        // 3. Exécution nucléaire : on remplace les traits et on détruit la Source
+        edges.remove(connectedEdges); 
+        edges.add(newEdges);          
+        nodes.remove(sourceId);       
+
+        network.unselectAll();
+        showToast("Entités fusionnées avec succès.", "success");
+        openSidebar(nodes.get(targetId)); // Met à jour le panneau
+    }
+    
+    function editNode(nodeId) {
+        document.getElementById('contextMenu').style.display = 'none';
+        var node = nodes.get(nodeId);
+        if (!node) return;
+        
+        editingNodeId = nodeId; // On est en mode Édition
+        rightClickPos = null; // Pas besoin de bouger le noeud
+        
+        document.getElementById('nodeType').value = node.details.TypeKey || 'note';
+        document.getElementById('nodeValue').value = node.details["Donnée Brute"] || '';
+        document.getElementById('nodeModal').style.display = 'flex';
+        document.getElementById('nodeValue').focus();
+    }
+
+    function openNodeModal() {
+        // Création standard (Bouton + de la barre)
+        rightClickPos = null; 
+        openNodeModalAtPos(); 
+    }
+
+    function toggleEdgeMode() {
+        const btn = document.getElementById('btn-link');
+        if (btn && btn.classList.contains('active')) {
+            network.disableEditMode();
+            if(btn) btn.classList.remove('active');
+            showToast("Mode liaison désactivé.");
+        } else {
+            network.addEdgeMode();
+            if(btn) btn.classList.add('active');
+            showToast("Mode liaison actif : Glissez d'une entité à l'autre.", "info");
+        }
+    }
+
+    function deleteSelected() {
+        var selection = network.getSelection();
+        if(selection.nodes.length > 0 || selection.edges.length > 0) {
+            network.deleteSelected();
+            showToast("Sélection supprimée.", "success");
+            closeSidebar();
+        } else {
+            showToast("Sélectionnez d'abord un élément à supprimer.", "error");
+        }
+    }
+
+    function closeNodeModal() { 
+        document.getElementById('nodeModal').style.display = 'none'; 
+        editingNodeId = null;
+    }
+
+    // Capture la touche Entrée
+    document.getElementById('nodeValue').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') saveNewNode();
+    });
+
+    function saveNewNode() {
+            var type = document.getElementById('nodeType').value;
+            var value = document.getElementById('nodeValue').value.trim();
+            var platformInput = document.getElementById('nodePlatform');
+            var platform = platformInput ? platformInput.value.trim() : '';
+            
+            if (!value) { showToast("Veuillez saisir une valeur.", "error"); return; }
+
+            var config = ENTITY_CONFIG[type];
+            var center = rightClickPos ? rightClickPos : network.getViewPosition(); 
+            var imgUrl;
+
+            // Logique de sélection de l'icône
+            if (type === 'id' && platform) {
+                // Si on a un nom de domaine, on prend le vrai logo
+                imgUrl = `https://icon.horse/icon/${platform}`;
+            } else {
+                // Sinon, on génère notre icône OSINT avec le fond correspondant
+                imgUrl = createIconUrl(config.path, config.color);
+            }
+
+            var nodeData = {
+                shape: 'circularImage',
+                image: imgUrl,
+                size: 24, // Taille de la bulle
+                label: value, // Affichage exclusif de la donnée brute
+                color: { 
+                    border: config.border || config.color, 
+                    highlight: { border: '#FFFFFF' } 
+                },
+                borderWidth: 2,
+                font: { 
+                    color: '#F8FAFC',
+                    face: 'JetBrains Mono',
+                    size: 13,
+                    align: 'center' // Centre parfaitement sous la bulle
+                },
+                details: { 
+                    "Classification": config.title, 
+                    "Donnée Brute": value, 
+                    "TypeKey": type 
+                }
+            };
+
+            if (platform) nodeData.details["Plateforme"] = platform;
+
+            if (editingNodeId) {
+                nodeData.id = editingNodeId;
+                nodes.update(nodeData);
+                showToast("Entité mise à jour.", "success");
+                openSidebar(nodes.get(editingNodeId));
+            } else {
+                nodeData.id = generateSafeUUID();
+                nodeData.x = center.x;
+                nodeData.y = center.y;
+                nodes.add(nodeData);
+                showToast("Entité créée.", "success");
+            }
+
+            closeNodeModal();
+        }
+
+    // --- BARRE LATÉRALE & EXPORTS (Inchangés) ---
+        // --- BARRE LATÉRALE (Notes & Propriétés) ---
+        function openSidebar(node) {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('sidebar-content');
+            let html = '';
+
+            if (node.details) {
+                for (const [key, value] of Object.entries(node.details)) {
+                    if (key === "TypeKey" || key === "Notes" || key === "Classification") continue;
+                    
+                    if (key === "Plateforme") {
+                        let faviconUrl = `https://icon.horse/icon/${value}`;
+                        html += `
+                            <div class="data-group">
+                                <div class="data-label">${key}</div>
+                                <div class="data-value" style="display: flex; align-items: center; gap: 8px;">
+                                    <img src="${faviconUrl}" style="width: 16px; height: 16px; border-radius: 4px;"> 
+                                    ${value}
+                                </div>
+                            </div>`;
+                    } else {
+                        html += `<div class="data-group"><div class="data-label">${key}</div><div class="data-value">${value}</div></div>`;
+                    }
+                }
+                
+                html += `<div class="data-group" style="border-left: 2px solid var(--border); padding-left: 10px; background: transparent;"><div class="data-label">Internal Hash</div><div class="data-value" style="font-size:0.7rem; color: var(--text-muted); border: none; padding: 0;">${node.id}</div></div>`;
+
+                // --- NOUVEAU BLOC MÉMO ---
+                let notesContent = node.details.Notes || "";
+                html += `
+                    <div class="memo-container">
+                        <div class="memo-header">
+                            <div class="memo-title"><i class="ph-fill ph-notebook"></i> Mémos d'enquête</div>
+                            <div class="memo-status" id="memo-status"><i class="ph-fill ph-check-circle"></i> Sync</div>
+                        </div>
+                        <textarea class="memo-textarea" id="node-notes" onkeyup="saveNodeNotes('${node.id}')" placeholder="Saisir des observations, indices ou déductions concernant cette cible...">${notesContent}</textarea>
+                    </div>`;
+
+            } else {
+                html = `<p style="color: var(--text-muted); font-size: 0.9rem;">Aucune métadonnée disponible.</p>`;
+            }
+
+            content.innerHTML = html;
+            sidebar.classList.add('active');
+        }
+
+        // Fonction d'auto-sauvegarde spécifique aux notes avec retour visuel
+        function saveNodeNotes(nodeId) {
+            var nodeToUpdate = nodes.get(nodeId);
+            if (nodeToUpdate) {
+                var newNotes = document.getElementById('node-notes').value;
+                nodeToUpdate.details.Notes = newNotes;
+                nodes.update(nodeToUpdate); 
+                
+                // Animation du petit texte "Sync" en haut à droite du mémo
+                var statusIndicator = document.getElementById('memo-status');
+                if (statusIndicator) {
+                    statusIndicator.classList.add('saving');
+                    // On annule le timer précédent si on tape vite
+                    clearTimeout(window.memoTimeout);
+                    // On cache le texte "Sync" après 1 seconde d'inactivité
+                    window.memoTimeout = setTimeout(() => {
+                        statusIndicator.classList.remove('saving');
+                    }, 1000);
+                }
+            }
+        }
+    // --- SYSTÈME D'AUTO-SAUVEGARDE (LOCALSTORAGE) ---
+        function autoSaveGraph() {
+            if (!network) return;
+            
+            var currentPositions = network.getPositions();
+            var nodesData = nodes.get().map(n => {
+                if (currentPositions[n.id]) {
+                    n.x = currentPositions[n.id].x;
+                    n.y = currentPositions[n.id].y;
+                }
+                return n;
+            });
+            
+            var backup = { nodes: nodesData, edges: edges.get() };
+            localStorage.setItem('GraphOSINT_Autosave', JSON.stringify(backup));
+        }
+        // --- MACHINE À REMONTER LE TEMPS (UNDO / REDO) ---
+        var historyStack = [];
+        var historyIndex = -1;
+        var isRestoring = false; // Verrou de sécurité pour éviter les boucles infinies
+
+        function saveSnapshot() {
+            // On ne sauvegarde pas si on est déjà en train de restaurer une sauvegarde
+            if (isRestoring || !network) return;
+
+            var currentPositions = network.getPositions();
+            var nodesData = nodes.get().map(n => {
+                if (currentPositions[n.id]) {
+                    n.x = currentPositions[n.id].x;
+                    n.y = currentPositions[n.id].y;
+                }
+                return n;
+            });
+            
+            var snapshot = JSON.stringify({ nodes: nodesData, edges: edges.get() });
+
+            // Évite de sauvegarder des doublons consécutifs
+            if (historyIndex >= 0 && historyStack[historyIndex] === snapshot) return;
+
+            // Si on fait une action après un "Undo", on écrase le futur
+            historyStack = historyStack.slice(0, historyIndex + 1);
+            historyStack.push(snapshot);
+
+            // Limite la mémoire à 50 actions pour ne pas surcharger la RAM
+            if (historyStack.length > 50) {
+                historyStack.shift();
+            } else {
+                historyIndex++;
+            }
+        }
+
+        function restoreSnapshot(index) {
+            if (index < 0 || index >= historyStack.length) return;
+            
+            isRestoring = true; // On verrouille
+            try {
+                var parsed = JSON.parse(historyStack[index]);
+                nodes.clear();
+                edges.clear();
+                nodes.add(parsed.nodes);
+                edges.add(parsed.edges);
+                network.fit({ animation: { duration: 500 } });
+            } catch(e) {
+                console.error("Erreur de restauration", e);
+            }
+            
+            // On libère le verrou et on sauvegarde dans le LocalStorage
+            isRestoring = false;
+            autoSaveGraph(); 
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                restoreSnapshot(historyIndex);
+                showToast("Action annulée", "info");
+            } else {
+                showToast("Rien à annuler", "error");
+            }
+        }
+
+        function redo() {
+            if (historyIndex < historyStack.length - 1) {
+                historyIndex++;
+                restoreSnapshot(historyIndex);
+                showToast("Action rétablie", "info");
+            }
+        }
+
+        // --- ECOUTEUR CLAVIER POUR LES RACCOURCIS ---
+        document.addEventListener('keydown', function(e) {
+            // Si on tape dans un input ou un textarea (ex: le mémo), on ne déclenche pas le raccourci global
+            var activeTag = document.activeElement.tagName.toLowerCase();
+            if (activeTag === 'input' || activeTag === 'textarea') return;
+
+            if (e.ctrlKey || e.metaKey) { // Support Mac (Cmd) et Windows/Linux (Ctrl)
+                if (e.key === 'z') { e.preventDefault(); undo(); }
+                if (e.key === 'y' || (e.shiftKey && e.key === 'z') || (e.shiftKey && e.key === 'Z')) { e.preventDefault(); redo(); }
+            }
+        });
+
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('active'); }
+    function clearGraph() { 
+            if(confirm("Vider tout l'espace de travail et détruire la sauvegarde automatique ?")) { 
+                nodes.clear(); 
+                edges.clear(); 
+                closeSidebar(); 
+                localStorage.removeItem('GraphOSINT_Autosave'); 
+                
+                showToast("Workspace et mémoire réinitialisés.", "success");
+            } 
+        }
+
+    function exportPNG() {
+        var canvas = document.querySelector('#mynetwork canvas');
+        var link = document.createElement('a');
+        link.download = 'GraphOSINT_Intelligence.png';
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+        showToast("Export PNG terminé.", "success");
+    }
+
+    function exportPDF() {
+        showToast("Génération du PDF en cours...", "info");
+        setTimeout(() => {
+            const { jsPDF } = window.jspdf;
+            var canvas = document.querySelector('#mynetwork canvas');
+            var pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            var ratio = Math.min(297 / canvas.width, 210 / canvas.height);
+            var imgX = (297 - canvas.width * ratio) / 2;
+            var imgY = (210 - canvas.height * ratio) / 2;
+            pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', imgX, imgY, canvas.width * ratio, canvas.height * ratio);
+            pdf.save('GraphOSINT_Intelligence.pdf');
+            showToast("Export PDF terminé.", "success");
+        }, 500);
+    }
+
+    function exportJSON() {
+        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ nodes: nodes.get(), edges: edges.get() }, null, 2));
+        var link = document.createElement('a'); link.href = dataStr; link.download = "GraphOSINT_Database.json"; link.click();
+        showToast("Sauvegarde JSON réussie.", "success");
+    }
+
+    function importJSON(event) {
+        var file = event.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var data = JSON.parse(e.target.result);
+                if (data.nodes) nodes.add(data.nodes);
+                if (data.edges) edges.add(data.edges);
+                network.fit({animation: {duration: 1000}});
+                document.getElementById('fileInput').value = '';
+                showToast("Base de données chargée.", "success");
+            } catch (err) { showToast("Fichier JSON invalide.", "error"); }
+        };
+        reader.readAsText(file);
+    }
+</script>
+</body>
+</html>
