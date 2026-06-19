@@ -8,30 +8,36 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-hide_streamlit_style = """
+full_screen_css = """
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    
     .block-container {
-        padding-top: 0rem;
-        padding-bottom: 0rem;
-        padding-left: 0rem;
-        padding-right: 0rem;
-        max-width: 100%;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
     }
+    
     iframe {
-        border: none;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        border: none !important;
+        z-index: 99999 !important;
     }
 </style>
 """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+st.markdown(full_screen_css, unsafe_allow_html=True)
 
 try:
     with open("index.html", "r", encoding="utf-8") as f:
         html_source = f.read()
         
-    components.html(html_source, height=900, scrolling=False)
+    components.html(html_source)
     
 except FileNotFoundError:
     st.error("⚠️ Fichier 'index.html' introuvable dans le répertoire.")
