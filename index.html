@@ -8,7 +8,7 @@
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" integrity="sha512-uJ/84yEUZ5q8Sspv2oH1XGjZ/D/62H/uQ22Zf/Z4B9Vbz2+A//h1I2D6XFmI1NnK+p9T4YpBq7/P0f+fBwMw==" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" integrity="sha512-+6eswakbBQ63FiPUe12hrqlCjw09FO2KOCM7Z2FmevxSrRufOCog/vk8cMkd4fdDDMlg9yZRA8e+UFwjHbOAQw==" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous"></script>
     <style>
         :root {
@@ -272,14 +272,14 @@
             <div class="form-group">
                 <label class="form-label">Classification</label>
                 <select class="custom-select" id="nodeType">
-                    <option value="person">Cible Principale (Identité)</option>
+                    <option value="person">Identité</option>
                     <option value="phone">Téléphone</option>
                     <option value="email">Adresse E-mail</option>
-                    <option value="address">Localisation / Adresse</option>
-                    <option value="id">Identifiant / Pseudo</option>
-                    <option value="ip">Adresse IP / Domaine</option>
-                    <option value="bank">Finance / IBAN</option>
-                    <option value="note">Note d'analyse</option>
+                    <option value="address">Adresse physique</option>
+                    <option value="id">Nom d'utilisateur</option>
+                    <option value="ip">Adresse IP</option>
+                    <option value="bank">Informations bancaires</option>
+                    <option value="note">Note</option>
                 </select>
            
             <div class="form-group" id="platform-group" style="display: none;">
@@ -288,8 +288,8 @@
             </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Valeur extraite</label>
-                <input type="text" class="custom-input" id="nodeValue" placeholder="ex: 192.168.1.1..." autocomplete="off">
+                <label class="form-label">Valeur</label>
+                <input type="text" class="custom-input" id="nodeValue" placeholder="ex: johndoe1" autocomplete="off">
             </div>
             <div class="modal-actions">
                 <button class="btn-modal btn-cancel" onclick="closeNodeModal()">Annuler</button>
