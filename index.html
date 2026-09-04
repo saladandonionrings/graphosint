@@ -674,7 +674,21 @@
 
             nodes.on('*', handleGraphMutation);
             edges.on('*', handleGraphMutation);
-            network.on("dragEnd", handleGraphMutation);
+
+            // Une fois qu'un nœud a été déplacé à la main, on l'épingle à cet
+            // endroit pour que la simulation physique (forceAtlas2Based) ne le
+            // fasse plus dériver — sa position devient celle voulue par l'utilisateur.
+            network.on("dragEnd", function(params) {
+                if (params.nodes && params.nodes.length > 0) {
+                    var positions = network.getPositions(params.nodes);
+                    params.nodes.forEach(function(nodeId) {
+                        var pos = positions[nodeId];
+                        nodes.update({ id: nodeId, x: pos.x, y: pos.y, fixed: { x: true, y: true } });
+                    });
+                } else {
+                    handleGraphMutation();
+                }
+            });
 
     }
 
@@ -1139,13 +1153,14 @@
                                 id: escapeHTML(String(n.id)),
                                 x: Number(n.x) || 0,
                                 y: Number(n.y) || 0,
-                                label: n.label ? String(n.label) : "", 
+                                label: n.label ? String(n.label) : "",
                                 shape: n.shape,
                                 image: n.image,
                                 size: Number(n.size) || 24,
                                 color: n.color,
                                 font: n.font,
                                 borderWidth: 2,
+                                fixed: n.fixed && (n.fixed.x || n.fixed.y) ? { x: true, y: true } : undefined,
                                 details: n.details
                             });
                         }
