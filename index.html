@@ -49,6 +49,20 @@
         }
         .btn-top:hover { background: var(--bg-panel); color: white; border-color: var(--border); }
 
+        /* --- RECHERCHE --- */
+        .search-group {
+            display: flex; align-items: center; gap: 8px; background: var(--bg-panel);
+            border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px;
+            min-width: 260px; max-width: 420px; flex: 1;
+        }
+        .search-group i { color: var(--text-muted); font-size: 1rem; flex-shrink: 0; }
+        .search-input {
+            background: transparent; border: none; outline: none; color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; flex: 1; min-width: 0;
+        }
+        .search-input::placeholder { color: #52525B; }
+        .search-status { font-size: 0.7rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+
         /* --- WORKSPACE --- */
         .workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
         #mynetwork { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
@@ -142,6 +156,12 @@
         .toast.success { border-left: 4px solid #10B981; }
         .toast.info { border-left: 4px solid #3B82F6; }
         .toast.error { border-left: 4px solid #EF4444; }
+        .toast-action-btn {
+            margin-left: 4px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        }
+        .toast-action-btn:hover { background: rgba(255,255,255,0.25); }
         /* --- NOTES / MÉMOS --- */
         .memo-container {
             margin-top: 24px;
@@ -218,6 +238,11 @@
 
     <div class="topbar">
         <div class="brand"><i class="ph-fill ph-hexagon"></i> GraphOSINT <span style="color: #52525B; font-weight: 400;">| CORE</span></div>
+        <div class="search-group">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Rechercher une entité..." autocomplete="off">
+            <span class="search-status" id="search-status"></span>
+        </div>
         <div class="toolbar-group">
             <button class="btn-top" onclick="document.getElementById('fileInput').click()"><i class="ph ph-upload-simple"></i> Import JSON</button>
             <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="importJSON(event)">
@@ -362,6 +387,98 @@
         setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
+    // Toast de détection de doublon : contient un bouton d'action, donc construit
+    // via l'API DOM (textContent) plutôt que via innerHTML.
+    function showDuplicateToast(existingId, newId, existingValue) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast error';
+
+        const icon = document.createElement('i');
+        icon.className = 'ph-fill ph-warning-circle';
+        icon.style.fontSize = '1.2rem';
+        toast.appendChild(icon);
+
+        const span = document.createElement('span');
+        span.textContent = `Doublon probable : "${existingValue}" existe déjà.`;
+        toast.appendChild(span);
+
+        const btn = document.createElement('button');
+        btn.className = 'toast-action-btn';
+        btn.textContent = 'Fusionner';
+        btn.addEventListener('click', function() {
+            mergeNodes(existingId, newId);
+            dismissToast(toast);
+        });
+        toast.appendChild(btn);
+
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        var autoDismiss = setTimeout(() => dismissToast(toast), 8000);
+        btn.addEventListener('click', () => clearTimeout(autoDismiss));
+    }
+
+    function dismissToast(toast) {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }
+
+    // Repère une entité existante de même type et de même valeur brute (hors
+    // elle-même) et propose une fusion plutôt que de laisser deux nœuds identiques.
+    function checkDuplicateFor(nodeId) {
+        var node = nodes.get(nodeId);
+        if (!node || !node.details) return;
+        var type = node.details.TypeKey;
+        var raw = (node.details["Donnée Brute"] || "").trim().toLowerCase();
+        if (!raw) return;
+
+        var match = nodes.get().find(function(n) {
+            return n.id !== nodeId && n.details &&
+                n.details.TypeKey === type &&
+                (n.details["Donnée Brute"] || "").trim().toLowerCase() === raw;
+        });
+
+        if (match) showDuplicateToast(match.id, nodeId, match.details["Donnée Brute"]);
+    }
+
+    // --- RECHERCHE D'ENTITÉS ---
+    function performSearch(query) {
+        query = query.trim().toLowerCase();
+        searchMatches = [];
+        searchIndex = -1;
+
+        if (query && nodes) {
+            nodes.get().forEach(function(n) {
+                var label = (n.label || "").toLowerCase();
+                var raw = (n.details && n.details["Donnée Brute"] || "").toLowerCase();
+                if (label.includes(query) || raw.includes(query)) searchMatches.push(n.id);
+            });
+        }
+
+        updateSearchStatus();
+        if (searchMatches.length > 0) goToSearchMatch(0);
+    }
+
+    function goToSearchMatch(index) {
+        if (!network || searchMatches.length === 0) return;
+        searchIndex = ((index % searchMatches.length) + searchMatches.length) % searchMatches.length;
+        var id = searchMatches[searchIndex];
+
+        network.selectNodes([id]);
+        network.focus(id, { scale: 1.2, animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+        openSidebar(nodes.get(id));
+        updateSearchStatus();
+    }
+
+    function updateSearchStatus() {
+        var status = document.getElementById('search-status');
+        if (!status) return;
+        var query = document.getElementById('searchInput').value.trim();
+        if (!query) { status.textContent = ''; }
+        else if (searchMatches.length === 0) { status.textContent = '0 résultat'; }
+        else { status.textContent = (searchIndex + 1) + '/' + searchMatches.length; }
+    }
+
     // --- CONFIGURATION VECTORIELLE ---
         const ENTITY_CONFIG = {
             person:  { title: 'IDENTITÉ', color: '#0F172A', border: '#3B82F6', path: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
@@ -374,12 +491,37 @@
             note:    { title: 'NOTE', color: '#27272A', border: '#E4E4E7', path: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zM16 14H8v-2h8v2zM13 9V3.5L18.5 9H13z' }
         };
 
+        // --- TYPAGE VISUEL DES LIENS ---
+        // Une couleur est déduite automatiquement du libellé saisi (mots-clés), pour
+        // repérer d'un coup d'œil le type de relation sur un graphe chargé.
+        const EDGE_TYPE_COLORS = [
+            { color: '#8B5CF6', keywords: ['PERE', 'MERE', 'FRERE', 'SOEUR', 'FILS', 'FILLE', 'EPOUX', 'EPOUSE', 'CONJOINT', 'FAMILLE', 'ONCLE', 'TANTE', 'COUSIN', 'PARENT'] },
+            { color: '#F97316', keywords: ['HABITE', 'DOMICILE', 'RESIDE', 'VOISIN', 'ADRESSE', 'LOGE'] },
+            { color: '#EAB308', keywords: ['PAIEMENT', 'BANQUE', 'COMPTE BANCAIRE', 'VIREMENT', 'FINANCE', 'PROPRIETAIRE', 'LOCATAIRE', 'SALAIRE'] },
+            { color: '#06B6D4', keywords: ['APPEL', 'MESSAGE', 'CONTACT', 'TELEPHONE', 'EMAIL', 'ECHANGE', 'CORRESPOND'] },
+            { color: '#3B82F6', keywords: ['PSEUDO', 'PROFIL', 'UTILISE', 'ALIAS', 'COMPTE'] }
+        ];
+        const EDGE_DEFAULT_COLOR = '#52525B';
+
+        function colorForEdgeLabel(label) {
+            if (!label) return EDGE_DEFAULT_COLOR;
+            var upper = String(label).toUpperCase();
+            for (const group of EDGE_TYPE_COLORS) {
+                if (group.keywords.some(kw => upper.includes(kw))) return group.color;
+            }
+            return EDGE_DEFAULT_COLOR;
+        }
+
     var nodes = new vis.DataSet([]);
     var edges = new vis.DataSet([]);
     var network = null;
-    
+
     var rightClickPos = null;
     var editingNodeId = null;
+
+    // --- RECHERCHE D'ENTITÉS ---
+    var searchMatches = [];
+    var searchIndex = -1;
 
     function initGraph() {
         var container = document.getElementById('mynetwork');
@@ -578,9 +720,11 @@
         var newLabel = prompt("Qualifier ce lien (ex: PERE, MERE, HABITE CHEZ) :", currentLabel);
 
         if (newLabel !== null) {
+            var upperLabel = newLabel.toUpperCase();
             edges.update({
                 id: edgeId,
-                label: newLabel.toUpperCase(),
+                label: upperLabel,
+                color: { color: colorForEdgeLabel(upperLabel), highlight: '#FFFFFF' },
                 font: { size: 11, color: '#A1A1AA', background: '#18181B', strokeWidth: 0, align: 'horizontal' }
             });
             showToast("Lien qualifié.", "success");
@@ -694,6 +838,21 @@
         if (e.key === 'Enter') saveNewNode();
     });
 
+    // --- BARRE DE RECHERCHE ---
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        performSearch(e.target.value);
+    });
+    document.getElementById('searchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            goToSearchMatch(searchIndex + (e.shiftKey ? -1 : 1));
+        } else if (e.key === 'Escape') {
+            e.target.value = '';
+            performSearch('');
+            e.target.blur();
+        }
+    });
+
     function saveNewNode() {
             var type = document.getElementById('nodeType').value;
             var value = document.getElementById('nodeValue').value.trim();
@@ -751,6 +910,7 @@
                 nodeData.y = center.y;
                 nodes.add(nodeData);
                 showToast("Entité créée.", "success");
+                checkDuplicateFor(nodeData.id);
             }
 
             closeNodeModal();
@@ -996,11 +1156,13 @@
                 if (data.edges && Array.isArray(data.edges)) {
                     data.edges.forEach(function(ed) {
                         if (ed.from && ed.to) {
+                            var edLabel = ed.label ? escapeHTML(String(ed.label)) : "";
                             safeEdges.push({
                                 id: escapeHTML(String(ed.id)),
                                 from: escapeHTML(String(ed.from)),
                                 to: escapeHTML(String(ed.to)),
-                                label: ed.label ? escapeHTML(String(ed.label)) : "",
+                                label: edLabel,
+                                color: edLabel ? { color: colorForEdgeLabel(edLabel), highlight: '#FFFFFF' } : undefined,
                                 font: ed.font
                             });
                         }
