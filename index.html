@@ -675,15 +675,16 @@
             nodes.on('*', handleGraphMutation);
             edges.on('*', handleGraphMutation);
 
-            // Une fois qu'un nœud a été déplacé à la main, on l'épingle à cet
-            // endroit pour que la simulation physique (forceAtlas2Based) ne le
-            // fasse plus dériver — sa position devient celle voulue par l'utilisateur.
+            // Une fois qu'un nœud a été déplacé à la main, on le retire de la
+            // simulation physique (forceAtlas2Based) pour qu'elle ne le fasse plus
+            // dériver — mais "physics: false" (contrairement à "fixed") le laisse
+            // toujours déplaçable à la souris par la suite.
             network.on("dragEnd", function(params) {
                 if (params.nodes && params.nodes.length > 0) {
                     var positions = network.getPositions(params.nodes);
                     params.nodes.forEach(function(nodeId) {
                         var pos = positions[nodeId];
-                        nodes.update({ id: nodeId, x: pos.x, y: pos.y, fixed: { x: true, y: true } });
+                        nodes.update({ id: nodeId, x: pos.x, y: pos.y, physics: false });
                     });
                 } else {
                     handleGraphMutation();
@@ -1160,7 +1161,7 @@
                                 color: n.color,
                                 font: n.font,
                                 borderWidth: 2,
-                                fixed: n.fixed && (n.fixed.x || n.fixed.y) ? { x: true, y: true } : undefined,
+                                physics: n.physics === false ? false : undefined,
                                 details: n.details
                             });
                         }
