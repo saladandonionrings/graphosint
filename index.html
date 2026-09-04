@@ -326,6 +326,27 @@
                 return charsToReplace[tag] || tag;
             });
         }
+
+        // Construit un item de menu contextuel via l'API DOM (jamais via innerHTML +
+        // attribut onclick concaténé) : les identifiants d'entité restent de simples
+        // valeurs capturées par la closure, ils ne sont jamais réinjectés comme du
+        // balisage HTML, ce qui élimine toute possibilité d'injection.
+        function buildMenuItem(iconClass, text, handler, danger) {
+            const item = document.createElement('div');
+            item.className = 'menu-item' + (danger ? ' menu-danger' : '');
+            const icon = document.createElement('i');
+            icon.className = iconClass;
+            item.appendChild(icon);
+            item.appendChild(document.createTextNode(' ' + text));
+            item.addEventListener('click', handler);
+            return item;
+        }
+
+        function buildMenuSeparator() {
+            const sep = document.createElement('div');
+            sep.className = 'menu-separator';
+            return sep;
+        }
     function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -418,46 +439,39 @@
             var selectedNodes = network.getSelectedNodes();
             
             var menu = document.getElementById('contextMenu');
-            
+            menu.replaceChildren();
+
             // 1. GESTION DE LA FUSION (2 nœuds sélectionnés)
             if (selectedNodes.length === 2 && selectedNodes.includes(nodeId)) {
                 var sourceNodeId = selectedNodes.find(id => id !== nodeId); // Celui qu'on va absorber
-                menu.innerHTML = `
-                    <div class="menu-item" onclick="mergeNodes('${nodeId}', '${sourceNodeId}')"><i class="ph ph-git-merge"></i> Fusionner vers cette entité</div>
-                    <div class="menu-separator"></div>
-                    <div class="menu-item" onclick="document.getElementById('contextMenu').style.display='none'; network.unselectAll();"><i class="ph ph-x"></i> Annuler la sélection</div>
-                `;
-            } 
+                menu.appendChild(buildMenuItem('ph ph-git-merge', 'Fusionner vers cette entité', function() { mergeNodes(nodeId, sourceNodeId); }));
+                menu.appendChild(buildMenuSeparator());
+                menu.appendChild(buildMenuItem('ph ph-x', 'Annuler la sélection', function() { document.getElementById('contextMenu').style.display = 'none'; network.unselectAll(); }));
+            }
             // 2. GESTION D'UN NŒUD SIMPLE
             else if (nodeId) {
-                if (!selectedNodes.includes(nodeId)) network.selectNodes([nodeId]); 
-                openSidebar(nodes.get(nodeId)); 
-                
-                menu.innerHTML = `
-                    <div class="menu-item" onclick="editNode('${nodeId}')"><i class="ph ph-pencil-simple"></i> Modifier l'entité</div>
-                    <div class="menu-item" onclick="startLinking()"><i class="ph ph-link"></i> Lier à...</div>
-                    <div class="menu-separator"></div>
-                    <div class="menu-item menu-danger" onclick="deleteSpecificNode('${nodeId}')"><i class="ph ph-trash"></i> Supprimer</div>
-                `;
-            } 
+                if (!selectedNodes.includes(nodeId)) network.selectNodes([nodeId]);
+                openSidebar(nodes.get(nodeId));
+
+                menu.appendChild(buildMenuItem('ph ph-pencil-simple', "Modifier l'entité", function() { editNode(nodeId); }));
+                menu.appendChild(buildMenuItem('ph ph-link', 'Lier à...', function() { startLinking(); }));
+                menu.appendChild(buildMenuSeparator());
+                menu.appendChild(buildMenuItem('ph ph-trash', 'Supprimer', function() { deleteSpecificNode(nodeId); }, true));
+            }
             // 3. GESTION D'UNE LIAISON (Trait)
             else if (edgeId) {
                 network.selectEdges([edgeId]);
-                menu.innerHTML = `
-                    <div class="menu-item" onclick="labelEdge('${edgeId}')"><i class="ph ph-text-t"></i> Qualifier le lien</div>
-                    <div class="menu-separator"></div>
-                    <div class="menu-item menu-danger" onclick="deleteSpecificEdge('${edgeId}')"><i class="ph ph-trash"></i> Supprimer le lien</div>
-                `;
-            } 
+                menu.appendChild(buildMenuItem('ph ph-text-t', 'Qualifier le lien', function() { labelEdge(edgeId); }));
+                menu.appendChild(buildMenuSeparator());
+                menu.appendChild(buildMenuItem('ph ph-trash', 'Supprimer le lien', function() { deleteSpecificEdge(edgeId); }, true));
+            }
             // 4. GESTION DU VIDE
             else {
                 network.unselectAll();
                 closeSidebar();
-                menu.innerHTML = `
-                    <div class="menu-item" onclick="openNodeModalAtPos()"><i class="ph ph-plus-circle"></i> Créer une entité ici</div>
-                    <div class="menu-separator"></div>
-                    <div class="menu-item" onclick="network.fit({animation: {duration: 800}})"><i class="ph ph-corners-out"></i> Recadrer la vue</div>
-                `;
+                menu.appendChild(buildMenuItem('ph ph-plus-circle', 'Créer une entité ici', function() { openNodeModalAtPos(); }));
+                menu.appendChild(buildMenuSeparator());
+                menu.appendChild(buildMenuItem('ph ph-corners-out', 'Recadrer la vue', function() { network.fit({ animation: { duration: 800 } }); }));
             }
 
             // Affichage fluide
@@ -759,8 +773,8 @@
                             <div class="data-group">
                                 <div class="data-label">${key}</div>
                                 <div class="data-value" style="display: flex; align-items: center; gap: 8px;">
-                                    <img src="${faviconUrl}" style="width: 16px; height: 16px; border-radius: 4px;"> 
-                                    ${value}
+                                    <img src="${faviconUrl}" style="width: 16px; height: 16px; border-radius: 4px;">
+                                    ${safeValue}
                                 </div>
                             </div>`;
                     } else {
@@ -769,17 +783,17 @@
                         html += `<div class="data-group"><div class="data-label">${safeKey}</div><div class="data-value">${safeValue}</div></div>`;
                     }
                 }
-                
-                html += `<div class="data-group" style="border-left: 2px solid var(--border); padding-left: 10px; background: transparent;"><div class="data-label">Internal Hash</div><div class="data-value" style="font-size:0.7rem; color: var(--text-muted); border: none; padding: 0;">${node.id}</div></div>`;
 
-                let notesContent = node.details.Notes || "";
+                html += `<div class="data-group" style="border-left: 2px solid var(--border); padding-left: 10px; background: transparent;"><div class="data-label">Internal Hash</div><div class="data-value" style="font-size:0.7rem; color: var(--text-muted); border: none; padding: 0;">${escapeHTML(node.id)}</div></div>`;
+
+                let notesContent = escapeHTML(node.details.Notes || "");
                 html += `
                     <div class="memo-container">
                         <div class="memo-header">
                             <div class="memo-title"><i class="ph-fill ph-notebook"></i> Mémos d'enquête</div>
                             <div class="memo-status" id="memo-status"><i class="ph-fill ph-check-circle"></i> Sync</div>
                         </div>
-                        <textarea class="memo-textarea" id="node-notes" onkeyup="saveNodeNotes('${node.id}')" placeholder="Saisir des observations, indices ou déductions concernant cette cible...">${notesContent}</textarea>
+                        <textarea class="memo-textarea" id="node-notes" placeholder="Saisir des observations, indices ou déductions concernant cette cible...">${notesContent}</textarea>
                     </div>`;
 
             } else {
@@ -788,6 +802,11 @@
 
             content.innerHTML = html;
             sidebar.classList.add('active');
+
+            var notesField = document.getElementById('node-notes');
+            if (notesField) {
+                notesField.addEventListener('keyup', function() { saveNodeNotes(node.id); });
+            }
         }
 
         function saveNodeNotes(nodeId) {
