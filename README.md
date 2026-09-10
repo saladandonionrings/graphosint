@@ -13,9 +13,9 @@ graph in the browser.
 
 Create entities and links, label links, search (including notes and
 tags), merge duplicate entities, undo/redo, local autosave, colored
-tags, filter by entity type, directed links, neighbor highlight on
-hover, minimap, light/dark theme, graph stats, CSV/JSON import,
-PNG/SVG export.
+tags, photo attachments, filter by entity type, directed links,
+neighbor highlight on hover, minimap, light/dark theme, graph stats,
+CSV/JSON import, PNG/SVG export.
 
 ## Usage
 
