@@ -13,7 +13,7 @@ graph in the browser.
 
 Create entities and links, label links, search and highlight, merge
 duplicate entities, undo/redo, local autosave, JSON import/export,
-PNG/PDF export.
+PNG export.
 
 ## Usage
 
@@ -28,4 +28,4 @@ streamlit run app.py
 
 ## Stack
 
-HTML, CSS, JavaScript, vis-network, jsPDF, Phosphor Icons.
+HTML, CSS, JavaScript, vis-network, Phosphor Icons.
