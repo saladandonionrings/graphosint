@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GraphOSINT | Intelligence Node Links</title>
+    <title>GraphOSINT</title>
     
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -237,10 +237,10 @@
 <body>
 
     <div class="topbar">
-        <div class="brand"><i class="ph-fill ph-hexagon"></i> GraphOSINT <span style="color: #52525B; font-weight: 400;">| CORE</span></div>
+        <div class="brand"><i class="ph-fill ph-hexagon"></i> Graph<span style="color: #52525B; font-weight: 400;">OSINT</span></div>
         <div class="search-group">
             <i class="ph ph-magnifying-glass"></i>
-            <input type="text" id="searchInput" class="search-input" placeholder="Search entity..." autocomplete="off">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search..." autocomplete="off">
             <span class="search-status" id="search-status"></span>
         </div>
         <div class="toolbar-group">
@@ -353,10 +353,6 @@
             });
         }
 
-        // Builds a context menu item via the DOM API (never via innerHTML +
-        // a concatenated onclick attribute): entity ids stay plain values
-        // captured by the closure, never reinjected as HTML markup, which
-        // rules out any injection.
         function buildMenuItem(iconClass, text, handler, danger) {
             const item = document.createElement('div');
             item.className = 'menu-item' + (danger ? ' menu-danger' : '');
@@ -388,8 +384,6 @@
         setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
-    // Duplicate detection toast: contains an action button, so it is built
-    // via the DOM API (textContent) rather than innerHTML.
     function showDuplicateToast(existingId, newId, existingValue) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -424,8 +418,6 @@
         setTimeout(() => toast.remove(), 300);
     }
 
-    // Finds an existing entity of the same type and raw value (other than
-    // itself) and offers a merge instead of leaving two identical nodes.
     function checkDuplicateFor(nodeId) {
         var node = nodes.get(nodeId);
         if (!node || !node.details) return;
@@ -494,8 +486,6 @@
         };
 
         // --- VISUAL LINK TYPING ---
-        // A color is automatically derived from the entered label (keywords), so
-        // the relationship type can be spotted at a glance on a loaded graph.
         const EDGE_TYPE_COLORS = [
             { color: '#8B5CF6', keywords: ['FATHER', 'MOTHER', 'BROTHER', 'SISTER', 'SON', 'DAUGHTER', 'HUSBAND', 'WIFE', 'SPOUSE', 'FAMILY', 'UNCLE', 'AUNT', 'COUSIN', 'PARENT'] },
             { color: '#F97316', keywords: ['LIVES', 'RESIDENCE', 'RESIDES', 'NEIGHBOR', 'ADDRESS', 'LODGES'] },
@@ -677,10 +667,6 @@
             nodes.on('*', handleGraphMutation);
             edges.on('*', handleGraphMutation);
 
-            // Once a node has been dragged by hand, it is removed from the
-            // physics simulation (forceAtlas2Based) so it no longer drifts, but
-            // "physics: false" (unlike "fixed") still leaves it draggable with
-            // the mouse afterwards.
             network.on("dragEnd", function(params) {
                 if (params.nodes && params.nodes.length > 0) {
                     var positions = network.getPositions(params.nodes);
