@@ -40,4 +40,4 @@ try:
     components.html(html_source)
     
 except FileNotFoundError:
-    st.error("⚠️ Fichier 'index.html' introuvable dans le répertoire.")
+    st.error("File 'index.html' not found in directory.")
