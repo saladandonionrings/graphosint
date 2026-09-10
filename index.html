@@ -49,7 +49,7 @@
         }
         .btn-top:hover { background: var(--bg-panel); color: white; border-color: var(--border); }
 
-        /* --- RECHERCHE --- */
+        /* --- SEARCH --- */
         .search-group {
             display: flex; align-items: center; gap: 8px; background: var(--bg-panel);
             border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px;
@@ -1096,27 +1096,82 @@
             } 
         }
 
-    function exportPNG() {
+    // The network canvas itself has a transparent background (the dark
+    // page background is plain CSS behind it), so a raw export shows the
+    // light node/edge text with nothing behind it. This paints the canvas
+    // onto an opaque copy filled with the app's background color first.
+    function flattenCanvasBackground(canvas) {
+        var out = document.createElement('canvas');
+        out.width = canvas.width;
+        out.height = canvas.height;
+        var ctx = out.getContext('2d');
+        ctx.fillStyle = '#09090B';
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(canvas, 0, 0);
+        return out;
+    }
+
+    // Favicon images (icon.horse) are loaded cross-origin without CORS
+    // headers, which taints the canvas and blocks toDataURL(). To export
+    // anyway, node images that aren't already a same-origin data: URI are
+    // temporarily swapped for the generated OSINT icon, captured, then
+    // restored once the capture is done.
+    function withExportableCanvas(callback) {
         var canvas = document.querySelector('#mynetwork canvas');
-        var link = document.createElement('a');
-        link.download = 'GraphOSINT-export.png';
-        link.href = canvas.toDataURL('image/png', 1.0);
-        link.click();
-        showToast("PNG export complete.", "success");
+        try {
+            callback(flattenCanvasBackground(canvas));
+            return;
+        } catch (err) {
+            // Tainted canvas: fall through to the swap-and-retry path below.
+        }
+
+        var externalNodes = nodes.get().filter(n => n.image && !n.image.startsWith('data:'));
+        if (externalNodes.length === 0) {
+            showToast("Export blocked by a browser security restriction.", "error");
+            return;
+        }
+
+        var backups = externalNodes.map(n => ({ id: n.id, image: n.image }));
+        var swapped = externalNodes.map(n => {
+            var config = ENTITY_CONFIG[n.details && n.details.TypeKey];
+            return { id: n.id, image: config ? createIconUrl(config.path, config.color) : n.image };
+        });
+
+        nodes.update(swapped);
+        network.once("afterDrawing", function() {
+            var cleanCanvas = document.querySelector('#mynetwork canvas');
+            try {
+                callback(flattenCanvasBackground(cleanCanvas));
+            } catch (err2) {
+                showToast("Export blocked by a browser security restriction.", "error");
+            }
+            nodes.update(backups);
+        });
+    }
+
+    function exportPNG() {
+        withExportableCanvas(function(canvas) {
+            var link = document.createElement('a');
+            link.download = 'GraphOSINT-export.png';
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.click();
+            showToast("PNG export complete.", "success");
+        });
     }
 
     function exportPDF() {
         showToast("Generating PDF...", "info");
         setTimeout(() => {
-            const { jsPDF } = window.jspdf;
-            var canvas = document.querySelector('#mynetwork canvas');
-            var pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            var ratio = Math.min(297 / canvas.width, 210 / canvas.height);
-            var imgX = (297 - canvas.width * ratio) / 2;
-            var imgY = (210 - canvas.height * ratio) / 2;
-            pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', imgX, imgY, canvas.width * ratio, canvas.height * ratio);
-            pdf.save('GraphOSINT-export.pdf');
-            showToast("PDF export complete.", "success");
+            withExportableCanvas(function(canvas) {
+                const { jsPDF } = window.jspdf;
+                var pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                var ratio = Math.min(297 / canvas.width, 210 / canvas.height);
+                var imgX = (297 - canvas.width * ratio) / 2;
+                var imgY = (210 - canvas.height * ratio) / 2;
+                pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', imgX, imgY, canvas.width * ratio, canvas.height * ratio);
+                pdf.save('GraphOSINT-export.pdf');
+                showToast("PDF export complete.", "success");
+            });
         }, 500);
     }
 
