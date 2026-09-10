@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.2/src/index.js" integrity="sha512-jGVhgUeHozcJQl2S14/LQwB1Xoube/CwYeOmckWGq2f+lHOa0ecYZOhXq6hzmF9B1JeE609znEAYo8hNypunjA==" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js" integrity="sha512-iTgTmIgxyA2YehKNVbzLJx4j9SnuC5ihtRrtxVkXH/9nF3vXBN5YeNQp+6wufBWKD3u+roHVNOvWBMufQnBbug==" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous"></script>
     <style>
         :root {
             --bg-canvas: #09090B;
@@ -249,7 +248,6 @@
             <button class="btn-top" onclick="exportJSON()"><i class="ph ph-floppy-disk"></i> Save JSON</button>
             <div style="width: 1px; background: var(--border); margin: 0 8px;"></div>
             <button class="btn-top" onclick="exportPNG()"><i class="ph ph-image"></i> Export PNG</button>
-            <button class="btn-top" onclick="exportPDF()"><i class="ph ph-file-pdf"></i> Export PDF</button>
         </div>
     </div>
 
@@ -1157,22 +1155,6 @@
             link.click();
             showToast("PNG export complete.", "success");
         });
-    }
-
-    function exportPDF() {
-        showToast("Generating PDF...", "info");
-        setTimeout(() => {
-            withExportableCanvas(function(canvas) {
-                const { jsPDF } = window.jspdf;
-                var pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-                var ratio = Math.min(297 / canvas.width, 210 / canvas.height);
-                var imgX = (297 - canvas.width * ratio) / 2;
-                var imgY = (210 - canvas.height * ratio) / 2;
-                pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', imgX, imgY, canvas.width * ratio, canvas.height * ratio);
-                pdf.save('GraphOSINT-export.pdf');
-                showToast("PDF export complete.", "success");
-            });
-        }, 500);
     }
 
     function exportJSON() {
