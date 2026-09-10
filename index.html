@@ -12,11 +12,25 @@
     <style>
         :root {
             --bg-canvas: #09090B;
+            --bg-canvas-rgb: 9, 9, 11;
             --bg-panel: #18181B;
+            --bg-panel-rgb: 24, 24, 27;
             --border: #27272A;
             --text-main: #F4F4F5;
             --text-muted: #A1A1AA;
             --accent: #3B82F6;
+            --grid-line: rgba(255,255,255,0.03);
+        }
+
+        html.light {
+            --bg-canvas: #F1F5F9;
+            --bg-canvas-rgb: 241, 245, 249;
+            --bg-panel: #FFFFFF;
+            --bg-panel-rgb: 255, 255, 255;
+            --border: #E2E8F0;
+            --text-main: #0F172A;
+            --text-muted: #64748B;
+            --grid-line: rgba(15,23,42,0.05);
         }
 
         * { box-sizing: border-box; }
@@ -26,18 +40,20 @@
             background-color: var(--bg-canvas); color: var(--text-main);
             font-family: 'Inter', sans-serif;
             height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
             background-size: 40px 40px; background-position: center center;
+            transition: background-color 0.2s;
         }
 
         /* --- TOP BAR --- */
         .topbar {
-            background: rgba(9, 9, 11, 0.9); border-bottom: 1px solid var(--border);
+            background: rgba(var(--bg-canvas-rgb), 0.9); border-bottom: 1px solid var(--border);
             padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10;
+            gap: 16px;
         }
-        .brand { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; color: #D4D4D8; }
+        .brand { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; color: var(--text-main); flex-shrink: 0; }
         .brand i { color: var(--accent); font-size: 1.4rem; }
         
         .toolbar-group { display: flex; gap: 8px; }
@@ -88,54 +104,89 @@
         }
         .tool-btn:hover::after { opacity: 1; left: 65px; }
 
+        .btn-top[data-tooltip] { position: relative; }
+        .btn-top[data-tooltip]::after {
+            content: attr(data-tooltip); position: absolute; top: 100%; right: 0; margin-top: 8px;
+            background: var(--text-main); color: var(--bg-canvas); padding: 4px 10px; border-radius: 6px;
+            font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none;
+            transition: 0.2s; text-transform: uppercase; letter-spacing: 0.05em; z-index: 30;
+        }
+        .btn-top[data-tooltip]:hover::after { opacity: 1; margin-top: 12px; }
+
         /* --- SIDEBAR --- */
         .sidebar {
-            width: 350px; background: rgba(24, 24, 27, 0.95); border-left: 1px solid var(--border); backdrop-filter: blur(10px);
+            width: 350px; background: rgba(var(--bg-panel-rgb), 0.95); border-left: 1px solid var(--border); backdrop-filter: blur(10px);
             display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: absolute; right: 0; top: 0; bottom: 0; z-index: 20; box-shadow: -10px 0 30px rgba(0,0,0,0.5);
         }
         .sidebar.active { transform: translateX(0); }
         .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .sidebar-title { margin: 0; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px; color: #E4E4E7;}
+        .sidebar-title { margin: 0; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px; color: var(--text-main);}
         .close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; }
-        .close-btn:hover { color: white; }
+        .close-btn:hover { color: var(--text-main); }
         .sidebar-content { padding: 20px; overflow-y: auto; }
         .data-group { margin-bottom: 20px; }
         .data-label { font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 6px; letter-spacing: 0.05em; }
-        .data-value { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #E4E4E7; word-break: break-all; background: #09090B; padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
+        .data-value { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text-main); word-break: break-all; background: var(--bg-canvas); padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
+
+        /* --- TAGS --- */
+        .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .tag-chip {
+            display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px;
+            font-size: 0.7rem; font-weight: 600; color: #fff; letter-spacing: 0.02em;
+        }
+        .tag-chip button { background: rgba(0,0,0,0.25); border: none; color: #fff; width: 16px; height: 16px; border-radius: 50%; cursor: pointer; font-size: 0.65rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
+        .tag-chip button:hover { background: rgba(0,0,0,0.45); }
+        .tag-add-row { display: flex; gap: 6px; }
+        .tag-add-row input[type="text"] {
+            flex: 1; background: var(--bg-canvas); border: 1px solid var(--border); color: var(--text-main);
+            padding: 8px 10px; border-radius: 6px; font-size: 0.8rem; min-width: 0;
+        }
+        .tag-add-row input[type="color"] { width: 34px; height: 34px; padding: 2px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-canvas); cursor: pointer; }
+        .tag-add-row button { background: var(--accent); border: none; color: white; border-radius: 6px; padding: 0 12px; cursor: pointer; font-size: 0.9rem; }
+        .tag-add-row button:hover { background: #2563EB; }
 
         /* --- MODAL --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
             display: none; justify-content: center; align-items: center; z-index: 100;
         }
-        .modal-box { background: #18181B; border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 450px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
-        .modal-title { margin: 0 0 24px 0; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 10px;}
+        .modal-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 450px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        .modal-title { margin: 0 0 24px 0; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 10px; color: var(--text-main); }
         .form-group { margin-bottom: 20px; }
         .form-label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;}
-        .custom-select, .custom-input { width: 100%; background: #09090B; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+        .custom-select, .custom-input { width: 100%; background: var(--bg-canvas); border: 1px solid var(--border); color: var(--text-main); padding: 12px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
         .custom-input:focus, .custom-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
         .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 30px; }
         .btn-modal { padding: 10px 20px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; transition: 0.2s; border: 1px solid transparent;}
         .btn-cancel { background: transparent; color: var(--text-muted); }
-        .btn-cancel:hover { background: #27272A; color: white; }
+        .btn-cancel:hover { background: var(--border); color: var(--text-main); }
         .btn-confirm { background: var(--accent); color: white; }
         .btn-confirm:hover { background: #2563EB; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
 
-        .context-menu { 
+        /* --- STATS --- */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .stat-tile { background: var(--bg-canvas); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+        .stat-tile .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--text-main); font-family: 'JetBrains Mono', monospace; }
+        .stat-tile .stat-label { font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-top: 4px; }
+        .stat-breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; color: var(--text-main); }
+        .stat-breakdown-row:last-child { border-bottom: none; }
+        .stat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+        .context-menu {
             position: fixed; /* FIXED: follows the mouse perfectly */
-            background: rgba(24, 24, 27, 0.85); 
+            background: rgba(var(--bg-panel-rgb), 0.85);
             backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255,255,255,0.1); 
-            border-radius: 8px; padding: 6px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.5); 
-            z-index: 9999; display: none; min-width: 240px; 
+            border: 1px solid var(--border);
+            border-radius: 8px; padding: 6px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.5);
+            z-index: 9999; display: none; min-width: 240px;
         }
 
-        .menu-item { 
-            padding: 10px 14px; cursor: pointer; border-radius: 6px; transition: 0.1s; 
-            display: flex; align-items: center; gap: 12px; font-size: 0.85rem; font-weight: 500; 
-            color: #E4E4E7; letter-spacing: 0.02em; 
+        .menu-item {
+            padding: 10px 14px; cursor: pointer; border-radius: 6px; transition: 0.1s;
+            display: flex; align-items: center; gap: 12px; font-size: 0.85rem; font-weight: 500;
+            color: var(--text-main); letter-spacing: 0.02em;
         }
         .menu-item i { font-size: 1.1rem; color: #9CA3AF; }
         .menu-item:hover { background: var(--accent); color: white; }
@@ -147,7 +198,7 @@
         /* --- TOAST NOTIFICATIONS --- */
         .toast-container { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 50; }
         .toast {
-            background: #18181B; border: 1px solid var(--border); color: white; padding: 12px 24px; border-radius: 8px;
+            background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-main); padding: 12px 24px; border-radius: 8px;
             font-size: 0.85rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px;
             opacity: 0; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -156,15 +207,15 @@
         .toast.info { border-left: 4px solid #3B82F6; }
         .toast.error { border-left: 4px solid #EF4444; }
         .toast-action-btn {
-            margin-left: 4px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            margin-left: 4px; background: var(--accent); border: 1px solid var(--accent);
             color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; white-space: nowrap; flex-shrink: 0;
         }
-        .toast-action-btn:hover { background: rgba(255,255,255,0.25); }
+        .toast-action-btn:hover { background: #2563EB; }
         /* --- NOTES / MEMOS --- */
         .memo-container {
             margin-top: 24px;
-            background: rgba(9, 9, 11, 0.6);
+            background: rgba(var(--bg-canvas-rgb), 0.6);
             border: 1px solid var(--border);
             border-radius: 8px;
             overflow: hidden;
@@ -177,7 +228,7 @@
             box-shadow: 0 0 20px rgba(59, 130, 246, 0.1), inset 0 0 0 1px var(--accent);
         }
         .memo-header {
-            background: #18181B;
+            background: var(--bg-panel);
             padding: 10px 14px;
             border-bottom: 1px solid var(--border);
             display: flex;
@@ -215,7 +266,7 @@
             min-height: 140px;
             background: transparent;
             border: none;
-            color: #E4E4E7;
+            color: var(--text-main);
             padding: 14px;
             font-family: 'Inter', sans-serif;
             font-size: 0.85rem;
@@ -231,6 +282,27 @@
         .memo-textarea::-webkit-scrollbar-thumb { background: #3F3F46; border-radius: 3px; }
         .memo-textarea::-webkit-scrollbar-thumb:hover { background: #52525B; }
         .vis-manipulation { display: none !important; }
+
+        /* --- FILTER PANEL --- */
+        .filter-panel {
+            position: absolute; left: 80px; top: 24px; z-index: 15; display: none;
+            background: rgba(var(--bg-panel-rgb), 0.95); border: 1px solid var(--border); border-radius: 10px;
+            padding: 14px; min-width: 210px; backdrop-filter: blur(10px); box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+        .filter-panel.active { display: block; }
+        .filter-panel-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .filter-panel-title span.link { color: var(--accent); cursor: pointer; text-transform: none; font-weight: 600; font-size: 0.7rem; }
+        .filter-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 0.8rem; color: var(--text-main); cursor: pointer; }
+        .filter-row input { accent-color: var(--accent); cursor: pointer; }
+        .filter-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        /* --- MINIMAP --- */
+        #minimap {
+            position: absolute; right: 24px; bottom: 24px; width: 180px; height: 120px; z-index: 10;
+            background: rgba(var(--bg-panel-rgb), 0.8); border: 1px solid var(--border); border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4); cursor: pointer; display: none;
+        }
+        #minimap.visible { display: block; }
     </style>
 </head>
 <body>
@@ -245,9 +317,15 @@
         <div class="toolbar-group">
             <button class="btn-top" onclick="document.getElementById('fileInput').click()"><i class="ph ph-upload-simple"></i> Import JSON</button>
             <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="importJSON(event)">
+            <button class="btn-top" onclick="document.getElementById('csvInput').click()"><i class="ph ph-table"></i> Import CSV</button>
+            <input type="file" id="csvInput" accept=".csv,.txt" style="display: none;" onchange="importCSV(event)">
             <button class="btn-top" onclick="exportJSON()"><i class="ph ph-floppy-disk"></i> Save JSON</button>
             <div style="width: 1px; background: var(--border); margin: 0 8px;"></div>
             <button class="btn-top" onclick="exportPNG()"><i class="ph ph-image"></i> Export PNG</button>
+            <button class="btn-top" onclick="exportSVG()"><i class="ph ph-file-svg"></i> Export SVG</button>
+            <div style="width: 1px; background: var(--border); margin: 0 8px;"></div>
+            <button class="btn-top" onclick="openStatsModal()"><i class="ph ph-chart-bar"></i> Stats</button>
+            <button class="btn-top" id="btn-theme" onclick="toggleTheme()" data-tooltip="Toggle theme"><i class="ph ph-sun"></i></button>
         </div>
     </div>
 
@@ -267,13 +345,26 @@
             <button class="tool-btn" id="btn-link" data-tooltip="Link two entities" onclick="toggleEdgeMode()" style="margin-top: 10px;">
                 <i class="ph ph-vector-two"></i>
             </button>
+            <button class="tool-btn" id="btn-directed" data-tooltip="Toggle directed links" onclick="toggleDirected()">
+                <i class="ph ph-arrow-right"></i>
+            </button>
             <button class="tool-btn danger" data-tooltip="Delete selection" onclick="deleteSelected()">
                 <i class="ph ph-trash"></i>
             </button>
             <button class="tool-btn" data-tooltip="Reset workspace" onclick="clearGraph()" style="margin-top: 20px;">
                 <i class="ph ph-broom"></i>
             </button>
+            <button class="tool-btn" id="btn-filter" data-tooltip="Filter entity types" onclick="toggleFilterPanel()" style="margin-top: 20px;">
+                <i class="ph ph-funnel"></i>
+            </button>
         </div>
+
+        <div class="filter-panel" id="filterPanel">
+            <div class="filter-panel-title">Entity types <span class="link" onclick="setAllTypeFilters(true)">All</span></div>
+            <div id="filterPanelContent"></div>
+        </div>
+
+        <canvas id="minimap" width="180" height="120" onclick="minimapNavigate(event)"></canvas>
 
         <div id="mynetwork"></div>
 
@@ -318,6 +409,16 @@
             <div class="modal-actions">
                 <button class="btn-modal btn-cancel" onclick="closeNodeModal()">Cancel</button>
                 <button class="btn-modal btn-confirm" onclick="saveNewNode()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="statsModal">
+        <div class="modal-box" style="width: 480px;">
+            <h3 class="modal-title"><i class="ph-fill ph-chart-bar"></i> Graph Stats</h3>
+            <div id="statsContent"></div>
+            <div class="modal-actions">
+                <button class="btn-modal btn-confirm" onclick="closeStatsModal()">Close</button>
             </div>
         </div>
     </div>
@@ -442,7 +543,9 @@
             nodes.get().forEach(function(n) {
                 var label = (n.label || "").toLowerCase();
                 var raw = (n.details && n.details["Raw Data"] || "").toLowerCase();
-                if (label.includes(query) || raw.includes(query)) searchMatches.push(n.id);
+                var notes = (n.details && n.details.Notes || "").toLowerCase();
+                var tags = (n.tags || []).map(t => t.text.toLowerCase()).join(' ');
+                if (label.includes(query) || raw.includes(query) || notes.includes(query) || tags.includes(query)) searchMatches.push(n.id);
             });
         }
 
@@ -508,10 +611,15 @@
 
     var rightClickPos = null;
     var editingNodeId = null;
+    var isHoverEffect = false;
+    var directedMode = false;
 
     // --- ENTITY SEARCH ---
     var searchMatches = [];
     var searchIndex = -1;
+
+    // --- TYPE FILTERS ---
+    var hiddenTypes = new Set();
 
     function initGraph() {
         var container = document.getElementById('mynetwork');
@@ -534,7 +642,7 @@
                 },
                 shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', size: 10, x: 0, y: 5 }
             },
-            edges: { width: 2, color: { color: '#52525B', highlight: '#3B82F6' }, smooth: { type: 'continuous' } },
+            edges: { width: 2, color: { color: '#52525B', highlight: '#3B82F6' }, smooth: { type: 'continuous' }, arrows: { to: { enabled: false, scaleFactor: 0.6 } } },
             physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -80, centralGravity: 0.01, springLength: 150, springConstant: 0.08, damping: 0.4 } },
             interaction: { hover: true, multiselect: true },
             manipulation: {
@@ -558,6 +666,15 @@
 
         network.on("selectNode", function (params) { openSidebar(nodes.get(params.nodes[0])); });
         network.on("deselectNode", function () { closeSidebar(); });
+
+            // --- NEIGHBOR HIGHLIGHT ON HOVER ---
+            network.on("hoverNode", function(params) { setHoverHighlight(params.node); });
+            network.on("blurNode", function() { clearHoverHighlight(); });
+
+            // --- MINIMAP ---
+            network.on("afterDrawing", scheduleMinimapDraw);
+            network.on("dragging", scheduleMinimapDraw);
+            network.on("zoom", scheduleMinimapDraw);
 
             // --- SMART CONTEXT MENU HANDLING ---
         network.on("oncontext", function (params) {
@@ -623,6 +740,8 @@
         // Hide the context menu when clicking elsewhere
             network.on("click", function() {
                 document.getElementById('contextMenu').style.display = 'none';
+                document.getElementById('filterPanel').classList.remove('active');
+                document.getElementById('btn-filter').classList.remove('active');
             });
 
             // === 1. RESTORE SESSION ON STARTUP ===
@@ -653,13 +772,19 @@
                 } catch (err) { console.error("Corrupted autosave", err); }
             }
 
+            // Restored nodes may carry a font color baked in under a
+            // different theme; resync them to the theme active right now.
+            applyNodeFontColor();
+
             // Take an initial "snapshot" right after startup
             setTimeout(saveSnapshot, 200);
 
             // === SAVE AND HISTORY TRIGGERS ===
             function handleGraphMutation() {
+                if (isHoverEffect) return;
                 saveSnapshot();
                 autoSaveGraph();
+                scheduleMinimapDraw();
             }
 
             nodes.on('*', handleGraphMutation);
@@ -680,7 +805,198 @@
     }
 
     document.addEventListener('DOMContentLoaded', initGraph);
-// --- MODAL LOGIC (Platform field appearance) ---
+
+    // --- NEIGHBOR HIGHLIGHT ON HOVER ---
+    var HOVER_DIM_OPACITY = 0.15;
+
+    var DEFAULT_EDGE_COLOR = { color: '#52525B', highlight: '#3B82F6' };
+
+    function setHoverHighlight(nodeId) {
+        if (!network) return;
+        var keep = new Set([nodeId, ...network.getConnectedNodes(nodeId)]);
+        var connectedEdges = new Set(network.getConnectedEdges(nodeId));
+
+        isHoverEffect = true;
+        nodes.update(nodes.get().map(n => ({ id: n.id, opacity: keep.has(n.id) ? 1 : HOVER_DIM_OPACITY })));
+        edges.update(edges.get().map(e => ({ id: e.id, color: Object.assign({}, DEFAULT_EDGE_COLOR, e.color, { opacity: connectedEdges.has(e.id) ? 1 : HOVER_DIM_OPACITY }) })));
+        isHoverEffect = false;
+    }
+
+    function clearHoverHighlight() {
+        if (!network) return;
+        isHoverEffect = true;
+        nodes.update(nodes.get().map(n => ({ id: n.id, opacity: 1 })));
+        edges.update(edges.get().map(e => ({ id: e.id, color: Object.assign({}, DEFAULT_EDGE_COLOR, e.color, { opacity: 1 }) })));
+        isHoverEffect = false;
+    }
+
+    // --- TYPE FILTERS ---
+    function renderFilterPanel() {
+        var content = document.getElementById('filterPanelContent');
+        content.replaceChildren();
+        Object.keys(ENTITY_CONFIG).forEach(function(type) {
+            var config = ENTITY_CONFIG[type];
+            var row = document.createElement('label');
+            row.className = 'filter-row';
+
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = !hiddenTypes.has(type);
+            checkbox.addEventListener('change', function() { setTypeFilter(type, checkbox.checked); });
+
+            var dot = document.createElement('span');
+            dot.className = 'filter-dot';
+            dot.style.background = config.border || config.color;
+
+            row.appendChild(checkbox);
+            row.appendChild(dot);
+            row.appendChild(document.createTextNode(config.title.charAt(0) + config.title.slice(1).toLowerCase()));
+            content.appendChild(row);
+        });
+    }
+
+    function setTypeFilter(type, visible) {
+        if (visible) hiddenTypes.delete(type); else hiddenTypes.add(type);
+        applyTypeFilters();
+    }
+
+    function setAllTypeFilters(visible) {
+        hiddenTypes.clear();
+        if (!visible) Object.keys(ENTITY_CONFIG).forEach(t => hiddenTypes.add(t));
+        renderFilterPanel();
+        applyTypeFilters();
+    }
+
+    function applyTypeFilters() {
+        // Visibility is cosmetic only: kept out of undo history and autosave.
+        isHoverEffect = true;
+        nodes.update(nodes.get().map(n => ({
+            id: n.id,
+            hidden: hiddenTypes.has(n.details && n.details.TypeKey)
+        })));
+        isHoverEffect = false;
+    }
+
+    function toggleFilterPanel() {
+        var panel = document.getElementById('filterPanel');
+        var willShow = !panel.classList.contains('active');
+        if (willShow) renderFilterPanel();
+        panel.classList.toggle('active', willShow);
+        document.getElementById('btn-filter').classList.toggle('active', willShow);
+    }
+
+    // --- DIRECTED LINKS ---
+    function toggleDirected() {
+        directedMode = !directedMode;
+        network.setOptions({ edges: { arrows: { to: { enabled: directedMode } } } });
+        document.getElementById('btn-directed').classList.toggle('active', directedMode);
+        showToast(directedMode ? "Directed links enabled." : "Directed links disabled.", "info");
+    }
+
+    // --- THEME ---
+    function applyNodeFontColor() {
+        var color = document.documentElement.classList.contains('light') ? '#0F172A' : '#F8FAFC';
+        nodes.update(nodes.get().map(n => ({ id: n.id, font: Object.assign({}, n.font, { color: color }) })));
+    }
+
+    function toggleTheme() {
+        var isLight = document.documentElement.classList.toggle('light');
+        localStorage.setItem('GraphOSINT_Theme', isLight ? 'light' : 'dark');
+        document.getElementById('btn-theme').innerHTML = isLight ? '<i class="ph ph-moon"></i>' : '<i class="ph ph-sun"></i>';
+        applyNodeFontColor();
+        scheduleMinimapDraw();
+    }
+
+    function initTheme() {
+        var saved = localStorage.getItem('GraphOSINT_Theme');
+        var isLight = saved === 'light';
+        document.documentElement.classList.toggle('light', isLight);
+        document.getElementById('btn-theme').innerHTML = isLight ? '<i class="ph ph-moon"></i>' : '<i class="ph ph-sun"></i>';
+    }
+    initTheme();
+
+    // --- MINIMAP ---
+    var minimapRAF = null;
+    function scheduleMinimapDraw() {
+        if (minimapRAF) return;
+        minimapRAF = requestAnimationFrame(function() { minimapRAF = null; drawMinimap(); });
+    }
+
+    function getMinimapTransform() {
+        var canvas = document.getElementById('minimap');
+        var positions = network.getPositions();
+        var ids = Object.keys(positions);
+        if (ids.length === 0) return null;
+
+        var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        ids.forEach(function(id) {
+            var p = positions[id];
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        });
+        var pad = 60;
+        minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+        var worldW = Math.max(maxX - minX, 1);
+        var worldH = Math.max(maxY - minY, 1);
+        var scale = Math.min(canvas.width / worldW, canvas.height / worldH);
+        var offsetX = (canvas.width - worldW * scale) / 2;
+        var offsetY = (canvas.height - worldH * scale) / 2;
+
+        return {
+            toMap: function(x, y) { return { x: (x - minX) * scale + offsetX, y: (y - minY) * scale + offsetY }; },
+            toWorld: function(x, y) { return { x: (x - offsetX) / scale + minX, y: (y - offsetY) / scale + minY }; }
+        };
+    }
+
+    function drawMinimap() {
+        var canvas = document.getElementById('minimap');
+        if (!network || !canvas) return;
+        var nodeList = nodes.get();
+        canvas.classList.toggle('visible', nodeList.length > 0);
+        if (nodeList.length === 0) return;
+
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var t = getMinimapTransform();
+        if (!t) return;
+
+        nodeList.forEach(function(n) {
+            var pos = network.getPositions([n.id])[n.id];
+            if (!pos) return;
+            var mapped = t.toMap(pos.x, pos.y);
+            ctx.beginPath();
+            ctx.arc(mapped.x, mapped.y, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = (n.color && n.color.border) || '#3B82F6';
+            ctx.fill();
+        });
+
+        var container = document.getElementById('mynetwork');
+        var scaleZoom = network.getScale();
+        var viewPos = network.getViewPosition();
+        var viewW = container.clientWidth / scaleZoom;
+        var viewH = container.clientHeight / scaleZoom;
+        var topLeft = t.toMap(viewPos.x - viewW / 2, viewPos.y - viewH / 2);
+        var bottomRight = t.toMap(viewPos.x + viewW / 2, viewPos.y + viewH / 2);
+
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+    }
+
+    function minimapNavigate(event) {
+        var canvas = document.getElementById('minimap');
+        var t = getMinimapTransform();
+        if (!t || !network) return;
+        var rect = canvas.getBoundingClientRect();
+        var x = event.clientX - rect.left;
+        var y = event.clientY - rect.top;
+        var world = t.toWorld(x, y);
+        network.moveTo({ position: { x: world.x, y: world.y }, animation: { duration: 300 } });
+    }
+
+    // --- MODAL LOGIC (Platform field appearance) ---
     document.getElementById('nodeType').addEventListener('change', function(e) {
         const platGroup = document.getElementById('platform-group');
         if (e.target.value === 'id') {
@@ -773,6 +1089,13 @@
                      }
                 }
             }
+
+            var mergedTags = (targetNode.tags || []).slice();
+            (sourceNode.tags || []).forEach(function(tag) {
+                if (!mergedTags.some(t => t.text.toLowerCase() === tag.text.toLowerCase())) mergedTags.push(tag);
+            });
+            targetNode.tags = mergedTags;
+
             nodes.update(targetNode);
         }
 
@@ -854,51 +1177,57 @@
         }
     });
 
+    // Shared by the modal form and CSV import: builds the vis-network node
+    // fields for a given type/value/platform (everything but id, x, y, tags).
+    function buildNodeData(type, value, platform) {
+        var config = ENTITY_CONFIG[type] || ENTITY_CONFIG.note;
+        var imgUrl;
+
+        if (type === 'id' && platform) {
+            imgUrl = `https://icon.horse/icon/${platform}`;
+        } else {
+            imgUrl = createIconUrl(config.path, config.color);
+        }
+
+        var fontColor = document.documentElement.classList.contains('light') ? '#0F172A' : '#F8FAFC';
+
+        var nodeData = {
+            shape: 'circularImage',
+            image: imgUrl,
+            size: 24,
+            label: value,
+            color: {
+                border: config.border || config.color,
+                highlight: { border: '#FFFFFF' }
+            },
+            borderWidth: 2,
+            font: {
+                color: fontColor,
+                face: 'JetBrains Mono',
+                size: 13,
+                align: 'center'
+            },
+            details: {
+                "Classification": config.title,
+                "Raw Data": value,
+                "TypeKey": type
+            }
+        };
+
+        if (platform) nodeData.details["Platform"] = platform;
+        return nodeData;
+    }
+
     function saveNewNode() {
             var type = document.getElementById('nodeType').value;
             var value = document.getElementById('nodeValue').value.trim();
             var platformInput = document.getElementById('nodePlatform');
             var platform = platformInput ? platformInput.value.trim() : '';
-            
+
             if (!value) { showToast("Please enter a value.", "error"); return; }
 
-            var config = ENTITY_CONFIG[type];
-            var center = rightClickPos ? rightClickPos : network.getViewPosition(); 
-            var imgUrl;
-
-            // Icon logic
-            if (type === 'id' && platform) {
-                // If we have a domain name, use the real logo
-                imgUrl = `https://icon.horse/icon/${platform}`;
-            } else {
-                // Otherwise, generate our OSINT icon with the matching background
-                imgUrl = createIconUrl(config.path, config.color);
-            }
-
-            var nodeData = {
-                shape: 'circularImage',
-                image: imgUrl,
-                size: 24,
-                label: value,
-                color: { 
-                    border: config.border || config.color, 
-                    highlight: { border: '#FFFFFF' } 
-                },
-                borderWidth: 2,
-                font: { 
-                    color: '#F8FAFC',
-                    face: 'JetBrains Mono',
-                    size: 13,
-                    align: 'center' 
-                },
-                details: { 
-                    "Classification": config.title, 
-                    "Raw Data": value, 
-                    "TypeKey": type 
-                }
-            };
-
-            if (platform) nodeData.details["Platform"] = platform;
+            var center = rightClickPos ? rightClickPos : network.getViewPosition();
+            var nodeData = buildNodeData(type, value, platform);
 
             if (editingNodeId) {
                 nodeData.id = editingNodeId;
@@ -909,6 +1238,7 @@
                 nodeData.id = generateSafeUUID();
                 nodeData.x = center.x;
                 nodeData.y = center.y;
+                nodeData.tags = [];
                 nodes.add(nodeData);
                 showToast("Entity created.", "success");
                 checkDuplicateFor(nodeData.id);
@@ -922,6 +1252,8 @@
             const sidebar = document.getElementById('sidebar');
             const content = document.getElementById('sidebar-content');
             let html = '';
+
+            html += `<div id="tags-section"></div>`;
 
             if (node.details) {
                 for (const [key, value] of Object.entries(node.details)) {
@@ -958,16 +1290,86 @@
                     </div>`;
 
             } else {
-                html = `<p style="color: var(--text-muted); font-size: 0.9rem;">No metadata available.</p>`;
+                html += `<p style="color: var(--text-muted); font-size: 0.9rem;">No metadata available.</p>`;
             }
 
             content.innerHTML = html;
             sidebar.classList.add('active');
+            renderTagsSection(node);
 
             var notesField = document.getElementById('node-notes');
             if (notesField) {
                 notesField.addEventListener('keyup', function() { saveNodeNotes(node.id); });
             }
+        }
+
+        // --- TAGS ---
+        function renderTagsSection(node) {
+            var container = document.getElementById('tags-section');
+            if (!container) return;
+            container.replaceChildren();
+
+            var list = document.createElement('div');
+            list.className = 'tag-list';
+            (node.tags || []).forEach(function(tag) {
+                var chip = document.createElement('span');
+                chip.className = 'tag-chip';
+                chip.style.background = tag.color;
+                chip.appendChild(document.createTextNode(tag.text));
+                var removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', function() { removeTagFromNode(node.id, tag.id); });
+                chip.appendChild(removeBtn);
+                list.appendChild(chip);
+            });
+            container.appendChild(list);
+
+            var addRow = document.createElement('div');
+            addRow.className = 'tag-add-row';
+
+            var textInput = document.createElement('input');
+            textInput.type = 'text';
+            textInput.placeholder = 'Add a tag...';
+            textInput.maxLength = 30;
+
+            var colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.value = '#3B82F6';
+
+            var addBtn = document.createElement('button');
+            addBtn.innerHTML = '<i class="ph ph-plus"></i>';
+            var doAdd = function() {
+                var text = textInput.value.trim();
+                if (!text) return;
+                addTagToNode(node.id, text, colorInput.value);
+            };
+            addBtn.addEventListener('click', doAdd);
+            textInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+
+            addRow.appendChild(textInput);
+            addRow.appendChild(colorInput);
+            addRow.appendChild(addBtn);
+            container.appendChild(addRow);
+        }
+
+        function addTagToNode(nodeId, text, color) {
+            var node = nodes.get(nodeId);
+            if (!node) return;
+            var tags = (node.tags || []).slice();
+            tags.push({ id: generateSafeUUID(), text: text, color: color });
+            nodes.update({ id: nodeId, tags: tags, color: Object.assign({}, node.color, { border: color }) });
+            openSidebar(nodes.get(nodeId));
+        }
+
+        function removeTagFromNode(nodeId, tagId) {
+            var node = nodes.get(nodeId);
+            if (!node) return;
+            var tags = (node.tags || []).filter(t => t.id !== tagId);
+            var config = ENTITY_CONFIG[node.details && node.details.TypeKey];
+            var fallbackBorder = config ? (config.border || config.color) : (node.color && node.color.border);
+            var borderColor = tags.length > 0 ? tags[tags.length - 1].color : fallbackBorder;
+            nodes.update({ id: nodeId, tags: tags, color: Object.assign({}, node.color, { border: borderColor }) });
+            openSidebar(nodes.get(nodeId));
         }
 
         function saveNodeNotes(nodeId) {
@@ -1157,6 +1559,74 @@
         });
     }
 
+    // A hand-built vector export: since it never touches the canvas, it
+    // sidesteps the tainted-canvas restriction entirely and stays crisp
+    // at any zoom level. Layout mirrors the current node positions but
+    // edges are drawn as straight lines rather than the live curved ones.
+    function exportSVG() {
+        var nodeList = nodes.get();
+        if (nodeList.length === 0) { showToast("Nothing to export.", "error"); return; }
+
+        var positions = network.getPositions();
+        var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        nodeList.forEach(function(n) {
+            var p = positions[n.id];
+            if (!p) return;
+            minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+        });
+        var pad = 80;
+        minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+        var width = Math.max(maxX - minX, 1);
+        var height = Math.max(maxY - minY, 1);
+
+        var isLight = document.documentElement.classList.contains('light');
+        var bgColor = isLight ? '#F1F5F9' : '#09090B';
+        var textColor = isLight ? '#0F172A' : '#F8FAFC';
+
+        var parts = [];
+        parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}">`);
+        parts.push(`<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94A3B8"/></marker></defs>`);
+        parts.push(`<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${bgColor}"/>`);
+
+        edges.get().forEach(function(e) {
+            var from = positions[e.from], to = positions[e.to];
+            if (!from || !to) return;
+            var color = (e.color && e.color.color) || '#52525B';
+            var marker = directedMode ? ' marker-end="url(#arrow)"' : '';
+            parts.push(`<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="${escapeHTML(color)}" stroke-width="2"${marker}/>`);
+            if (e.label) {
+                var mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
+                var lw = e.label.length * 6 + 10;
+                parts.push(`<rect x="${mx - lw/2}" y="${my - 9}" width="${lw}" height="18" rx="4" fill="${bgColor}"/>`);
+                parts.push(`<text x="${mx}" y="${my + 4}" text-anchor="middle" font-size="10" font-family="monospace" fill="#A1A1AA">${escapeHTML(e.label)}</text>`);
+            }
+        });
+
+        nodeList.forEach(function(n) {
+            var p = positions[n.id];
+            if (!p) return;
+            var r = (n.size || 24);
+            var border = (n.color && n.color.border) || '#3B82F6';
+            var clipId = 'clip-' + String(n.id).replace(/[^a-zA-Z0-9]/g, '');
+            parts.push(`<clipPath id="${clipId}"><circle cx="${p.x}" cy="${p.y}" r="${r}"/></clipPath>`);
+            parts.push(`<circle cx="${p.x}" cy="${p.y}" r="${r + 2}" fill="${bgColor}" stroke="${escapeHTML(border)}" stroke-width="2"/>`);
+            if (n.image) parts.push(`<image href="${escapeHTML(n.image)}" x="${p.x - r}" y="${p.y - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#${clipId})"/>`);
+            parts.push(`<text x="${p.x}" y="${p.y + r + 18}" text-anchor="middle" font-size="13" font-family="monospace" fill="${textColor}">${escapeHTML(n.label || '')}</text>`);
+        });
+
+        parts.push('</svg>');
+
+        var blob = new Blob([parts.join('')], { type: 'image/svg+xml' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.download = 'GraphOSINT-export.svg';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast("SVG export complete.", "success");
+    }
+
     function exportJSON() {
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ nodes: nodes.get(), edges: edges.get() }, null, 2));
         var link = document.createElement('a'); link.href = dataStr; link.download = "GraphOSINT-export.json"; link.click();
@@ -1187,7 +1657,12 @@
                                 font: n.font,
                                 borderWidth: 2,
                                 physics: n.physics === false ? false : undefined,
-                                details: n.details
+                                details: n.details,
+                                tags: Array.isArray(n.tags) ? n.tags.filter(t => t && t.text).map(t => ({
+                                    id: t.id ? escapeHTML(String(t.id)) : generateSafeUUID(),
+                                    text: escapeHTML(String(t.text)),
+                                    color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#3B82F6'
+                                })) : []
                             });
                         }
                     });
@@ -1217,12 +1692,125 @@
                 document.getElementById('fileInput').value = '';
                 showToast("Database loaded.", "success");
                 
-            } catch (err) { 
+            } catch (err) {
                 console.error("Parse error:", err);
-                showToast("Invalid JSON file.", "error"); 
+                showToast("Invalid JSON file.", "error");
             }
         };
         reader.readAsText(file);
+    }
+
+    // --- CSV / PLAIN LIST IMPORT ---
+    // Splits one CSV line into fields, honoring double-quoted values that
+    // may contain commas (a minimal RFC4180-style parser).
+    function parseCSVLine(line) {
+        var fields = [];
+        var current = '';
+        var inQuotes = false;
+        for (var i = 0; i < line.length; i++) {
+            var ch = line[i];
+            if (inQuotes) {
+                if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+                else if (ch === '"') { inQuotes = false; }
+                else { current += ch; }
+            } else if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === ',') {
+                fields.push(current); current = '';
+            } else {
+                current += ch;
+            }
+        }
+        fields.push(current);
+        return fields.map(f => f.trim());
+    }
+
+    // Expects rows of type,value[,platform]. A "type" header row is
+    // detected and skipped; unknown types fall back to "note".
+    function importCSV(event) {
+        var file = event.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var lines = String(e.target.result).split(/\r?\n/).filter(l => l.trim().length > 0);
+            if (lines.length === 0) { showToast("Empty CSV file.", "error"); return; }
+
+            if (/^type\s*,/i.test(lines[0])) lines.shift();
+
+            var center = network.getViewPosition();
+            var added = 0;
+
+            lines.forEach(function(line, index) {
+                var fields = parseCSVLine(line);
+                var type = (fields[0] || '').trim().toLowerCase();
+                var value = (fields[1] || '').trim();
+                var platform = (fields[2] || '').trim();
+                if (!value) return;
+                if (!ENTITY_CONFIG[type]) type = 'note';
+
+                var nodeData = buildNodeData(type, value, platform);
+                nodeData.id = generateSafeUUID();
+                var angle = (index / lines.length) * Math.PI * 2;
+                var radius = 100 + Math.random() * 150;
+                nodeData.x = center.x + Math.cos(angle) * radius;
+                nodeData.y = center.y + Math.sin(angle) * radius;
+                nodeData.tags = [];
+                nodes.add(nodeData);
+                added++;
+            });
+
+            network.fit({ animation: { duration: 800 } });
+            document.getElementById('csvInput').value = '';
+            showToast(`${added} entities imported from CSV.`, "success");
+        };
+        reader.readAsText(file);
+    }
+
+    // --- STATS ---
+    function openStatsModal() {
+        var nodeList = nodes.get();
+        var edgeList = edges.get();
+
+        var degree = {};
+        edgeList.forEach(function(e) {
+            degree[e.from] = (degree[e.from] || 0) + 1;
+            degree[e.to] = (degree[e.to] || 0) + 1;
+        });
+
+        var topNode = null, topDegree = -1;
+        nodeList.forEach(function(n) {
+            var d = degree[n.id] || 0;
+            if (d > topDegree) { topDegree = d; topNode = n; }
+        });
+
+        var counts = {};
+        nodeList.forEach(function(n) {
+            var type = (n.details && n.details.TypeKey) || 'note';
+            counts[type] = (counts[type] || 0) + 1;
+        });
+
+        var isolated = nodeList.filter(n => !degree[n.id]).length;
+
+        var html = `
+            <div class="stats-grid">
+                <div class="stat-tile"><div class="stat-value">${nodeList.length}</div><div class="stat-label">Entities</div></div>
+                <div class="stat-tile"><div class="stat-value">${edgeList.length}</div><div class="stat-label">Links</div></div>
+                <div class="stat-tile"><div class="stat-value">${topNode ? escapeHTML(topNode.label) : '-'}</div><div class="stat-label">Most connected (${topDegree > 0 ? topDegree : 0})</div></div>
+                <div class="stat-tile"><div class="stat-value">${isolated}</div><div class="stat-label">Isolated entities</div></div>
+            </div>
+            <div class="form-label">Breakdown by type</div>`;
+
+        Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(function(type) {
+            var config = ENTITY_CONFIG[type] || ENTITY_CONFIG.note;
+            html += `<div class="stat-breakdown-row"><span><span class="stat-dot" style="background:${config.border || config.color}"></span>${escapeHTML(config.title)}</span><span>${counts[type]}</span></div>`;
+        });
+
+        document.getElementById('statsContent').innerHTML = html;
+        document.getElementById('statsModal').style.display = 'flex';
+    }
+
+    function closeStatsModal() {
+        document.getElementById('statsModal').style.display = 'none';
     }
 </script>
 </body>
