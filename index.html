@@ -146,6 +146,33 @@
         .tag-add-row button { background: var(--accent); border: none; color: white; border-radius: 6px; padding: 0 12px; cursor: pointer; font-size: 0.9rem; }
         .tag-add-row button:hover { background: #2563EB; }
 
+        /* --- PHOTOS --- */
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+        .photo-thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-thumb button {
+            position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); border: none; color: #fff;
+            width: 18px; height: 18px; border-radius: 50%; cursor: pointer; font-size: 0.7rem; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .photo-thumb button:hover { background: rgba(239,68,68,0.9); }
+        .photo-add-tile {
+            aspect-ratio: 1; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg-canvas);
+            color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; transition: 0.15s;
+        }
+        .photo-add-tile:hover { color: var(--text-main); border-color: var(--accent); }
+        .lightbox-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; z-index: 200;
+            align-items: center; justify-content: center; padding: 40px;
+        }
+        .lightbox-overlay img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 25px 60px rgba(0,0,0,0.6); }
+        .lightbox-close {
+            position: absolute; top: 24px; right: 24px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem;
+        }
+        .lightbox-close:hover { background: rgba(255,255,255,0.25); }
+
         /* --- MODAL --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
@@ -421,6 +448,11 @@
                 <button class="btn-modal btn-confirm" onclick="closeStatsModal()">Close</button>
             </div>
         </div>
+    </div>
+
+    <div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()"><i class="ph ph-x"></i></button>
+        <img id="lightboxImage" src="" onclick="event.stopPropagation()">
     </div>
 
     <script>
@@ -1095,6 +1127,7 @@
                 if (!mergedTags.some(t => t.text.toLowerCase() === tag.text.toLowerCase())) mergedTags.push(tag);
             });
             targetNode.tags = mergedTags;
+            targetNode.photos = (targetNode.photos || []).concat(sourceNode.photos || []);
 
             nodes.update(targetNode);
         }
@@ -1239,6 +1272,7 @@
                 nodeData.x = center.x;
                 nodeData.y = center.y;
                 nodeData.tags = [];
+                nodeData.photos = [];
                 nodes.add(nodeData);
                 showToast("Entity created.", "success");
                 checkDuplicateFor(nodeData.id);
@@ -1254,6 +1288,7 @@
             let html = '';
 
             html += `<div id="tags-section"></div>`;
+            html += `<div id="photos-section"></div>`;
 
             if (node.details) {
                 for (const [key, value] of Object.entries(node.details)) {
@@ -1296,6 +1331,7 @@
             content.innerHTML = html;
             sidebar.classList.add('active');
             renderTagsSection(node);
+            renderPhotosSection(node);
 
             var notesField = document.getElementById('node-notes');
             if (notesField) {
@@ -1372,6 +1408,118 @@
             openSidebar(nodes.get(nodeId));
         }
 
+        // --- PHOTOS ---
+        // Downscales an uploaded image before it's embedded as a data URI,
+        // since several full-resolution photos per entity would quickly
+        // blow past the browser's localStorage quota used for autosave.
+        function resizeImageFile(file, maxDim) {
+            return new Promise(function(resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var img = new Image();
+                    img.onload = function() {
+                        var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                        var w = Math.round(img.width * scale);
+                        var h = Math.round(img.height * scale);
+                        var canvas = document.createElement('canvas');
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.82));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderPhotosSection(node) {
+            var container = document.getElementById('photos-section');
+            if (!container) return;
+            container.replaceChildren();
+
+            var label = document.createElement('div');
+            label.className = 'form-label';
+            label.textContent = 'Photos';
+            container.appendChild(label);
+
+            var grid = document.createElement('div');
+            grid.className = 'photo-grid';
+
+            (node.photos || []).forEach(function(photo) {
+                var thumb = document.createElement('div');
+                thumb.className = 'photo-thumb';
+
+                var img = document.createElement('img');
+                img.src = photo.dataUrl;
+                img.addEventListener('click', function() { openLightbox(photo.dataUrl); });
+                thumb.appendChild(img);
+
+                var removeBtn = document.createElement('button');
+                removeBtn.innerHTML = '<i class="ph ph-x"></i>';
+                removeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    removePhotoFromNode(node.id, photo.id);
+                });
+                thumb.appendChild(removeBtn);
+
+                grid.appendChild(thumb);
+            });
+
+            var addTile = document.createElement('div');
+            addTile.className = 'photo-add-tile';
+            addTile.innerHTML = '<i class="ph ph-camera-plus"></i>';
+
+            var fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.multiple = true;
+            fileInput.style.display = 'none';
+            fileInput.addEventListener('change', function(e) {
+                addPhotosToNode(node.id, e.target.files);
+            });
+
+            addTile.addEventListener('click', function() { fileInput.click(); });
+
+            grid.appendChild(addTile);
+            grid.appendChild(fileInput);
+            container.appendChild(grid);
+        }
+
+        function addPhotosToNode(nodeId, fileList) {
+            var files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) return;
+
+            Promise.all(files.map(f => resizeImageFile(f, 1000))).then(function(dataUrls) {
+                var node = nodes.get(nodeId);
+                if (!node) return;
+                var photos = (node.photos || []).concat(dataUrls.map(url => ({ id: generateSafeUUID(), dataUrl: url })));
+                nodes.update({ id: nodeId, photos: photos });
+                showToast(`${dataUrls.length} photo(s) added.`, "success");
+                openSidebar(nodes.get(nodeId));
+            }).catch(function() {
+                showToast("Could not read one of the selected files.", "error");
+            });
+        }
+
+        function removePhotoFromNode(nodeId, photoId) {
+            var node = nodes.get(nodeId);
+            if (!node) return;
+            var photos = (node.photos || []).filter(p => p.id !== photoId);
+            nodes.update({ id: nodeId, photos: photos });
+            openSidebar(nodes.get(nodeId));
+        }
+
+        function openLightbox(dataUrl) {
+            document.getElementById('lightboxImage').src = dataUrl;
+            document.getElementById('lightboxOverlay').style.display = 'flex';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightboxOverlay').style.display = 'none';
+        }
+
         function saveNodeNotes(nodeId) {
             var nodeToUpdate = nodes.get(nodeId);
             if (nodeToUpdate) {
@@ -1404,7 +1552,12 @@
             });
             
             var backup = { nodes: nodesData, edges: edges.get() };
-            localStorage.setItem('GraphOSINT_Autosave', JSON.stringify(backup));
+            try {
+                localStorage.setItem('GraphOSINT_Autosave', JSON.stringify(backup));
+            } catch (err) {
+                console.error("Autosave failed", err);
+                showToast("Autosave failed: local storage is full. Export a JSON backup.", "error");
+            }
         }
         // --- TIME MACHINE (UNDO / REDO) ---
         var historyStack = [];
@@ -1475,6 +1628,11 @@
         }
 
         document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('lightboxOverlay').style.display === 'flex') {
+                closeLightbox();
+                return;
+            }
+
             var activeTag = document.activeElement.tagName.toLowerCase();
             if (activeTag === 'input' || activeTag === 'textarea') return;
 
@@ -1662,6 +1820,10 @@
                                     id: t.id ? escapeHTML(String(t.id)) : generateSafeUUID(),
                                     text: escapeHTML(String(t.text)),
                                     color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#3B82F6'
+                                })) : [],
+                                photos: Array.isArray(n.photos) ? n.photos.filter(p => p && /^data:image\//.test(p.dataUrl)).map(p => ({
+                                    id: p.id ? escapeHTML(String(p.id)) : generateSafeUUID(),
+                                    dataUrl: p.dataUrl
                                 })) : []
                             });
                         }
@@ -1755,6 +1917,7 @@
                 nodeData.x = center.x + Math.cos(angle) * radius;
                 nodeData.y = center.y + Math.sin(angle) * radius;
                 nodeData.tags = [];
+                nodeData.photos = [];
                 nodes.add(nodeData);
                 added++;
             });
