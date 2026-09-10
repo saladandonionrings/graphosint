@@ -298,6 +298,7 @@
                 <label class="form-label">Classification</label>
                 <select class="custom-select" id="nodeType">
                     <option value="person">Identity</option>
+                    <option value="company">Company</option>
                     <option value="phone">Phone</option>
                     <option value="email">Email Address</option>
                     <option value="address">Physical Address</option>
@@ -482,6 +483,7 @@
     // --- VECTOR CONFIGURATION ---
         const ENTITY_CONFIG = {
             person:  { title: 'IDENTITY', color: '#0F172A', border: '#3B82F6', path: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+            company: { title: 'COMPANY', color: '#78350F', border: '#F59E0B', path: 'M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z' },
             phone:   { title: 'PHONE', color: '#064E3B', border: '#10B981', path: 'M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z' },
             email:   { title: 'E-MAIL', color: '#7C2D12', border: '#F97316', path: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z' },
             address: { title: 'LOCATION', color: '#4C1D95', border: '#8B5CF6', path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
