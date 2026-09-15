@@ -421,6 +421,7 @@
                     <option value="id">Username</option>
                     <option value="ip">IP Address</option>
                     <option value="bank">Bank Information</option>
+                    <option value="photo">Photo</option>
                     <option value="note">Note</option>
                 </select>
 
@@ -448,9 +449,14 @@
                     <option value="skype.com">
                 </datalist>
             </div>
+            <div class="form-group" id="node-photo-group" style="display: none;">
+                <label class="form-label">Photo</label>
+                <input type="file" class="custom-input" id="nodePhoto" accept="image/*">
+                <img id="nodePhotoPreview" style="display: none; max-width: 100%; max-height: 160px; margin-top: 10px; border-radius: 6px; border: 1px solid var(--border);">
+            </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Value</label>
+                <label class="form-label" id="nodeValueLabel">Value</label>
                 <input type="text" class="custom-input" id="nodeValue" placeholder="ex: johndoe1" autocomplete="off">
             </div>
             <div class="form-group">
@@ -653,6 +659,7 @@
             id:      { title: 'USERNAME', color: '#831843', border: '#A1A1AA', path: 'M14 2H6c-1.11 0-2 .89-2 2v16c0 1.11.89 2 2 2h12c1.11 0 2-.89 2-2V8l-6-6zm-4 7c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm4 8H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z' },
             ip:      { title: 'IP', color: '#164E63', border: '#06B6D4', path: 'M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z' },
             bank:    { title: 'FINANCE', color: '#18181B', border: '#A1A1AA', path: 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
+            photo:   { title: 'PHOTO', color: '#1E293B', border: '#EC4899', path: 'M9 2l-1.83 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 100 6 3 3 0 000-6z' },
             note:    { title: 'NOTE', color: '#27272A', border: '#E4E4E7', path: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zM16 14H8v-2h8v2zM13 9V3.5L18.5 9H13z' }
         };
 
@@ -1066,15 +1073,44 @@
         network.moveTo({ position: { x: world.x, y: world.y }, animation: { duration: 300 } });
     }
 
-    // --- MODAL LOGIC (Platform field appearance) ---
+    // --- MODAL LOGIC (Platform / Photo field appearance) ---
+    function updateModalFieldsForType(type) {
+        document.getElementById('platform-group').style.display = (type === 'id') ? 'block' : 'none';
+        document.getElementById('node-photo-group').style.display = (type === 'photo') ? 'block' : 'none';
+        document.getElementById('nodeValueLabel').textContent = (type === 'photo') ? 'Caption' : 'Value';
+    }
+
     document.getElementById('nodeType').addEventListener('change', function(e) {
-        const platGroup = document.getElementById('platform-group');
-        if (e.target.value === 'id') {
-            platGroup.style.display = 'block';
-        } else {
-            platGroup.style.display = 'none';
-            document.getElementById('nodePlatform').value = ''; // Clear if changed mind
-        }
+        updateModalFieldsForType(e.target.value);
+        if (e.target.value !== 'id') document.getElementById('nodePlatform').value = ''; // Clear if changed mind
+        if (e.target.value !== 'photo') resetPhotoInput();
+    });
+
+    // --- PHOTO ENTITY (client-side resize before storing as the node's own avatar) ---
+    var pendingPhotoDataUrl = null;
+
+    function resetPhotoInput() {
+        pendingPhotoDataUrl = null;
+        var fileInput = document.getElementById('nodePhoto');
+        var preview = document.getElementById('nodePhotoPreview');
+        if (fileInput) fileInput.value = '';
+        if (preview) { preview.style.display = 'none'; preview.src = ''; }
+    }
+
+    // Note: image downscaling reuses the resizeImageFile(file, maxDim) helper
+    // defined further below (shared with the photo-attachments feature) — it
+    // returns a Promise, not a callback.
+    document.getElementById('nodePhoto').addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        resizeImageFile(file, 512).then(function(dataUrl) {
+            pendingPhotoDataUrl = dataUrl;
+            var preview = document.getElementById('nodePhotoPreview');
+            preview.src = dataUrl;
+            preview.style.display = 'block';
+        }).catch(function() {
+            showToast("Could not read this image.", "error");
+        });
     });
     // --- CONTEXT MENU ACTIONS ---
     function startLinking() {
@@ -1096,7 +1132,8 @@
         document.getElementById('nodeValue').value = '';
         document.getElementById('nodePlatform').value = '';
         document.getElementById('nodeLink').value = '';
-        document.getElementById('platform-group').style.display = 'none';
+        resetPhotoInput();
+        updateModalFieldsForType('person');
         document.getElementById('nodeModal').style.display = 'flex';
         document.getElementById('nodeValue').focus();
     }
@@ -1197,8 +1234,14 @@
         document.getElementById('nodePlatform').value = node.details["Platform"] || '';
         document.getElementById('nodeLink').value = node.details["Link"] || '';
 
-        const platGroup = document.getElementById('platform-group');
-        platGroup.style.display = (type === 'id') ? 'block' : 'none';
+        resetPhotoInput();
+        if (type === 'photo' && node.details["Photo"]) {
+            pendingPhotoDataUrl = node.details["Photo"];
+            var preview = document.getElementById('nodePhotoPreview');
+            preview.src = pendingPhotoDataUrl;
+            preview.style.display = 'block';
+        }
+        updateModalFieldsForType(type);
 
         document.getElementById('nodeModal').style.display = 'flex';
         document.getElementById('nodeValue').focus();
@@ -1260,11 +1303,15 @@
 
     // Shared by the modal form and CSV import: builds the vis-network node
     // fields for a given type/value/platform (everything but id, x, y, tags).
-    function buildNodeData(type, value, platform) {
+    // photoDataUrl only applies to type "photo": it becomes the node's own
+    // avatar image instead of a generated icon.
+    function buildNodeData(type, value, platform, photoDataUrl) {
         var config = ENTITY_CONFIG[type] || ENTITY_CONFIG.note;
         var imgUrl;
 
-        if (type === 'id' && platform) {
+        if (type === 'photo' && photoDataUrl) {
+            imgUrl = photoDataUrl;
+        } else if (type === 'id' && platform) {
             imgUrl = `https://icon.horse/icon/${platform}`;
         } else {
             imgUrl = createIconUrl(config.path, config.color);
@@ -1296,6 +1343,7 @@
         };
 
         if (platform) nodeData.details["Platform"] = platform;
+        if (type === 'photo' && photoDataUrl) nodeData.details["Photo"] = photoDataUrl;
         return nodeData;
     }
 
@@ -1307,9 +1355,10 @@
             var link = document.getElementById('nodeLink').value.trim();
 
             if (!value) { showToast("Please enter a value.", "error"); return; }
+            if (type === 'photo' && !pendingPhotoDataUrl) { showToast("Please select a photo.", "error"); return; }
 
             var center = rightClickPos ? rightClickPos : network.getViewPosition();
-            var nodeData = buildNodeData(type, value, platform);
+            var nodeData = buildNodeData(type, value, platform, pendingPhotoDataUrl);
             if (link) nodeData.details["Link"] = link;
 
             if (editingNodeId) {
@@ -1360,6 +1409,14 @@
                         html += isSafeHttpUrl(value)
                             ? `<div class="data-group"><div class="data-label">${key}</div><div class="data-value"><a href="${safeValue}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); word-break: break-all;">${safeValue}</a></div></div>`
                             : `<div class="data-group"><div class="data-label">${key}</div><div class="data-value">${safeValue}</div></div>`;
+                    } else if (key === "Photo") {
+                        html += `
+                            <div class="data-group">
+                                <div class="data-label">${key}</div>
+                                <div class="data-value" style="padding: 6px;">
+                                    <img src="${escapeHTML(value)}" style="max-width: 100%; max-height: 220px; display: block; border-radius: 4px; cursor: pointer;" onclick="openLightbox(this.src)">
+                                </div>
+                            </div>`;
                     } else {
                         let safeKey = escapeHTML(key);
                         let safeValue = escapeHTML(value);
