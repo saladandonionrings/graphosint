@@ -304,17 +304,47 @@
                     <option value="id">Nom d'utilisateur</option>
                     <option value="ip">Adresse IP</option>
                     <option value="bank">Informations bancaires</option>
+                    <option value="photo">Photo</option>
                     <option value="note">Note</option>
                 </select>
-           
+
             <div class="form-group" id="platform-group" style="display: none;">
                 <label class="form-label">Plateforme (ex: twitter.com)</label>
-                <input type="text" class="custom-input" id="nodePlatform" placeholder="Domaine pour le logo..." autocomplete="off">
+                <input type="text" class="custom-input" id="nodePlatform" list="platformOptions" placeholder="Domaine pour le logo..." autocomplete="off">
+                <datalist id="platformOptions">
+                    <option value="x.com">
+                    <option value="facebook.com">
+                    <option value="instagram.com">
+                    <option value="linkedin.com">
+                    <option value="tiktok.com">
+                    <option value="youtube.com">
+                    <option value="reddit.com">
+                    <option value="github.com">
+                    <option value="snapchat.com">
+                    <option value="telegram.org">
+                    <option value="whatsapp.com">
+                    <option value="discord.com">
+                    <option value="pinterest.com">
+                    <option value="twitch.tv">
+                    <option value="threads.net">
+                    <option value="tumblr.com">
+                    <option value="vk.com">
+                    <option value="skype.com">
+                </datalist>
+            </div>
+            <div class="form-group" id="photo-group" style="display: none;">
+                <label class="form-label">Photo</label>
+                <input type="file" class="custom-input" id="nodePhoto" accept="image/*">
+                <img id="nodePhotoPreview" style="display: none; max-width: 100%; max-height: 160px; margin-top: 10px; border-radius: 6px; border: 1px solid var(--border);">
             </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Valeur</label>
+                <label class="form-label" id="nodeValueLabel">Valeur</label>
                 <input type="text" class="custom-input" id="nodeValue" placeholder="ex: johndoe1" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Lien source (optionnel)</label>
+                <input type="text" class="custom-input" id="nodeLink" placeholder="https://..." autocomplete="off">
             </div>
             <div class="modal-actions">
                 <button class="btn-modal btn-cancel" onclick="closeNodeModal()">Annuler</button>
@@ -350,6 +380,17 @@
                 const charsToReplace = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
                 return charsToReplace[tag] || tag;
             });
+        }
+
+        // N'autorise que http(s) comme cible de lien cliquable : un "Lien" importé
+        // avec un schéma javascript:/data: reste affiché en texte brut, jamais cliquable.
+        function isSafeHttpUrl(value) {
+            try {
+                var url = new URL(value, window.location.href);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch (e) {
+                return false;
+            }
         }
 
         // Construit un item de menu contextuel via l'API DOM (jamais via innerHTML +
@@ -488,6 +529,7 @@
             id:      { title: 'PSEUDO', color: '#831843', border: '#A1A1AA', path: 'M14 2H6c-1.11 0-2 .89-2 2v16c0 1.11.89 2 2 2h12c1.11 0 2-.89 2-2V8l-6-6zm-4 7c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm4 8H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z' },
             ip:      { title: 'IP', color: '#164E63', border: '#06B6D4', path: 'M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z' },
             bank:    { title: 'FINANCE', color: '#18181B', border: '#A1A1AA', path: 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
+            photo:   { title: 'PHOTO', color: '#1E293B', border: '#EC4899', path: 'M9 2l-1.83 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 100 6 3 3 0 000-6z' },
             note:    { title: 'NOTE', color: '#27272A', border: '#E4E4E7', path: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM16 18H8v-2h8v2zM16 14H8v-2h8v2zM13 9V3.5L18.5 9H13z' }
         };
 
@@ -694,15 +736,59 @@
     }
 
     document.addEventListener('DOMContentLoaded', initGraph);
-// --- LOGIQUE DU MODAL (Apparition du champ Plateforme) ---
+// --- LOGIQUE DU MODAL (Apparition des champs Plateforme / Photo) ---
+    function updateModalFieldsForType(type) {
+        document.getElementById('platform-group').style.display = (type === 'id') ? 'block' : 'none';
+        document.getElementById('photo-group').style.display = (type === 'photo') ? 'block' : 'none';
+        document.getElementById('nodeValueLabel').textContent = (type === 'photo') ? 'Légende' : 'Valeur';
+    }
+
     document.getElementById('nodeType').addEventListener('change', function(e) {
-        const platGroup = document.getElementById('platform-group');
-        if (e.target.value === 'id') {
-            platGroup.style.display = 'block';
-        } else {
-            platGroup.style.display = 'none';
-            document.getElementById('nodePlatform').value = ''; // On vide si on change d'avis
-        }
+        updateModalFieldsForType(e.target.value);
+        if (e.target.value !== 'id') document.getElementById('nodePlatform').value = ''; // On vide si on change d'avis
+        if (e.target.value !== 'photo') resetPhotoInput();
+    });
+
+    // --- GESTION DE LA PHOTO (redimensionnement côté client avant stockage) ---
+    var pendingPhotoDataUrl = null;
+
+    function resetPhotoInput() {
+        pendingPhotoDataUrl = null;
+        var fileInput = document.getElementById('nodePhoto');
+        var preview = document.getElementById('nodePhotoPreview');
+        if (fileInput) fileInput.value = '';
+        if (preview) { preview.style.display = 'none'; preview.src = ''; }
+    }
+
+    function resizeImageFile(file, maxDim, callback) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = new Image();
+            img.onload = function() {
+                var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                var canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(img.width * scale));
+                canvas.height = Math.max(1, Math.round(img.height * scale));
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                callback(canvas.toDataURL('image/jpeg', 0.85));
+            };
+            img.onerror = function() { callback(null); };
+            img.src = e.target.result;
+        };
+        reader.onerror = function() { callback(null); };
+        reader.readAsDataURL(file);
+    }
+
+    document.getElementById('nodePhoto').addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        resizeImageFile(file, 512, function(dataUrl) {
+            if (!dataUrl) { showToast("Impossible de lire cette image.", "error"); return; }
+            pendingPhotoDataUrl = dataUrl;
+            var preview = document.getElementById('nodePhotoPreview');
+            preview.src = dataUrl;
+            preview.style.display = 'block';
+        });
     });
     // --- ACTIONS DU MENU CONTEXTUEL ---
     function startLinking() {
@@ -719,9 +805,13 @@
 
     function openNodeModalAtPos() {
         document.getElementById('contextMenu').style.display = 'none';
-        editingNodeId = null; 
+        editingNodeId = null;
         document.getElementById('nodeType').value = 'person';
         document.getElementById('nodeValue').value = '';
+        document.getElementById('nodePlatform').value = '';
+        document.getElementById('nodeLink').value = '';
+        resetPhotoInput();
+        updateModalFieldsForType('person');
         document.getElementById('nodeModal').style.display = 'flex';
         document.getElementById('nodeValue').focus();
     }
@@ -807,9 +897,22 @@
         
         editingNodeId = nodeId; // On est en mode Édition
         rightClickPos = null; // Pas besoin de bouger le noeud
-        
-        document.getElementById('nodeType').value = node.details.TypeKey || 'note';
+
+        var type = node.details.TypeKey || 'note';
+        document.getElementById('nodeType').value = type;
         document.getElementById('nodeValue').value = node.details["Donnée Brute"] || '';
+        document.getElementById('nodePlatform').value = node.details["Plateforme"] || '';
+        document.getElementById('nodeLink').value = node.details["Lien"] || '';
+
+        resetPhotoInput();
+        if (type === 'photo' && node.details["Photo"]) {
+            pendingPhotoDataUrl = node.details["Photo"];
+            var preview = document.getElementById('nodePhotoPreview');
+            preview.src = pendingPhotoDataUrl;
+            preview.style.display = 'block';
+        }
+
+        updateModalFieldsForType(type);
         document.getElementById('nodeModal').style.display = 'flex';
         document.getElementById('nodeValue').focus();
     }
@@ -873,15 +976,20 @@
             var value = document.getElementById('nodeValue').value.trim();
             var platformInput = document.getElementById('nodePlatform');
             var platform = platformInput ? platformInput.value.trim() : '';
-            
+            var link = document.getElementById('nodeLink').value.trim();
+
             if (!value) { showToast("Veuillez saisir une valeur.", "error"); return; }
+            if (type === 'photo' && !pendingPhotoDataUrl) { showToast("Veuillez sélectionner une photo.", "error"); return; }
 
             var config = ENTITY_CONFIG[type];
-            var center = rightClickPos ? rightClickPos : network.getViewPosition(); 
+            var center = rightClickPos ? rightClickPos : network.getViewPosition();
             var imgUrl;
 
             // Logique icone
-            if (type === 'id' && platform) {
+            if (type === 'photo') {
+                // La photo choisie (redimensionnée côté client) devient l'avatar du nœud
+                imgUrl = pendingPhotoDataUrl;
+            } else if (type === 'id' && platform) {
                 // Si on a un nom de domaine, on prend le vrai logo
                 imgUrl = `https://icon.horse/icon/${platform}`;
             } else {
@@ -894,25 +1002,27 @@
                 image: imgUrl,
                 size: 24,
                 label: value,
-                color: { 
-                    border: config.border || config.color, 
-                    highlight: { border: '#FFFFFF' } 
+                color: {
+                    border: config.border || config.color,
+                    highlight: { border: '#FFFFFF' }
                 },
                 borderWidth: 2,
-                font: { 
+                font: {
                     color: '#F8FAFC',
                     face: 'JetBrains Mono',
                     size: 13,
-                    align: 'center' 
+                    align: 'center'
                 },
-                details: { 
-                    "Classification": config.title, 
-                    "Donnée Brute": value, 
-                    "TypeKey": type 
+                details: {
+                    "Classification": config.title,
+                    "Donnée Brute": value,
+                    "TypeKey": type
                 }
             };
 
             if (platform) nodeData.details["Plateforme"] = platform;
+            if (type === 'photo') nodeData.details["Photo"] = pendingPhotoDataUrl;
+            if (link) nodeData.details["Lien"] = link;
 
             if (editingNodeId) {
                 nodeData.id = editingNodeId;
@@ -940,7 +1050,7 @@
             if (node.details) {
                 for (const [key, value] of Object.entries(node.details)) {
                     if (key === "TypeKey" || key === "Notes" || key === "Classification") continue;
-                    
+
                     if (key === "Plateforme") {
                         let safeValue = escapeHTML(value);
                         let faviconUrl = `https://icon.horse/icon/${safeValue}`;
@@ -952,6 +1062,19 @@
                                     ${safeValue}
                                 </div>
                             </div>`;
+                    } else if (key === "Photo") {
+                        html += `
+                            <div class="data-group">
+                                <div class="data-label">${key}</div>
+                                <div class="data-value" style="padding: 6px;">
+                                    <img src="${escapeHTML(value)}" style="max-width: 100%; max-height: 220px; display: block; border-radius: 4px;">
+                                </div>
+                            </div>`;
+                    } else if (key === "Lien") {
+                        let safeValue = escapeHTML(value);
+                        html += isSafeHttpUrl(value)
+                            ? `<div class="data-group"><div class="data-label">${key}</div><div class="data-value"><a href="${safeValue}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); word-break: break-all;">${safeValue}</a></div></div>`
+                            : `<div class="data-group"><div class="data-label">${key}</div><div class="data-value">${safeValue}</div></div>`;
                     } else {
                         let safeKey = escapeHTML(key);
                         let safeValue = escapeHTML(value);
