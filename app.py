@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="GraphOSINT | Intelligence Link Analysis",
+    page_title="GraphOSINT",
     page_icon="🕸️",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -40,4 +40,4 @@ try:
     components.html(html_source)
     
 except FileNotFoundError:
-    st.error("⚠️ Fichier 'index.html' introuvable dans le répertoire.")
+    st.error("File 'index.html' not found in directory.")
