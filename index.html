@@ -423,15 +423,39 @@
                     <option value="bank">Bank Information</option>
                     <option value="note">Note</option>
                 </select>
-           
+
             <div class="form-group" id="platform-group" style="display: none;">
                 <label class="form-label">Platform (ex: twitter.com)</label>
-                <input type="text" class="custom-input" id="nodePlatform" placeholder="Domain for logo..." autocomplete="off">
+                <input type="text" class="custom-input" id="nodePlatform" list="platformOptions" placeholder="Domain for logo..." autocomplete="off">
+                <datalist id="platformOptions">
+                    <option value="x.com">
+                    <option value="facebook.com">
+                    <option value="instagram.com">
+                    <option value="linkedin.com">
+                    <option value="tiktok.com">
+                    <option value="youtube.com">
+                    <option value="reddit.com">
+                    <option value="github.com">
+                    <option value="snapchat.com">
+                    <option value="telegram.org">
+                    <option value="whatsapp.com">
+                    <option value="discord.com">
+                    <option value="pinterest.com">
+                    <option value="twitch.tv">
+                    <option value="threads.net">
+                    <option value="tumblr.com">
+                    <option value="vk.com">
+                    <option value="skype.com">
+                </datalist>
             </div>
             </div>
             <div class="form-group">
                 <label class="form-label">Value</label>
                 <input type="text" class="custom-input" id="nodeValue" placeholder="ex: johndoe1" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Source link (optional)</label>
+                <input type="text" class="custom-input" id="nodeLink" placeholder="https://..." autocomplete="off">
             </div>
             <div class="modal-actions">
                 <button class="btn-modal btn-cancel" onclick="closeNodeModal()">Cancel</button>
@@ -484,6 +508,20 @@
             });
         }
 
+        // Only allows http(s) as a clickable link target: a "Link" imported
+        // with a javascript:/data: scheme is rendered as plain text, never clickable.
+        function isSafeHttpUrl(value) {
+            try {
+                var url = new URL(value, window.location.href);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Builds a context-menu item via the DOM API (never via innerHTML +
+        // a concatenated onclick attribute): entity ids stay plain values
+        // captured by the closure, never re-injected as markup.
         function buildMenuItem(iconClass, text, handler, danger) {
             const item = document.createElement('div');
             item.className = 'menu-item' + (danger ? ' menu-danger' : '');
@@ -1053,9 +1091,12 @@
 
     function openNodeModalAtPos() {
         document.getElementById('contextMenu').style.display = 'none';
-        editingNodeId = null; 
+        editingNodeId = null;
         document.getElementById('nodeType').value = 'person';
         document.getElementById('nodeValue').value = '';
+        document.getElementById('nodePlatform').value = '';
+        document.getElementById('nodeLink').value = '';
+        document.getElementById('platform-group').style.display = 'none';
         document.getElementById('nodeModal').style.display = 'flex';
         document.getElementById('nodeValue').focus();
     }
@@ -1149,9 +1190,16 @@
         
         editingNodeId = nodeId; // Edit mode
         rightClickPos = null; // No need to move the node
-        
-        document.getElementById('nodeType').value = node.details.TypeKey || 'note';
+
+        var type = node.details.TypeKey || 'note';
+        document.getElementById('nodeType').value = type;
         document.getElementById('nodeValue').value = node.details["Raw Data"] || '';
+        document.getElementById('nodePlatform').value = node.details["Platform"] || '';
+        document.getElementById('nodeLink').value = node.details["Link"] || '';
+
+        const platGroup = document.getElementById('platform-group');
+        platGroup.style.display = (type === 'id') ? 'block' : 'none';
+
         document.getElementById('nodeModal').style.display = 'flex';
         document.getElementById('nodeValue').focus();
     }
@@ -1256,11 +1304,13 @@
             var value = document.getElementById('nodeValue').value.trim();
             var platformInput = document.getElementById('nodePlatform');
             var platform = platformInput ? platformInput.value.trim() : '';
+            var link = document.getElementById('nodeLink').value.trim();
 
             if (!value) { showToast("Please enter a value.", "error"); return; }
 
             var center = rightClickPos ? rightClickPos : network.getViewPosition();
             var nodeData = buildNodeData(type, value, platform);
+            if (link) nodeData.details["Link"] = link;
 
             if (editingNodeId) {
                 nodeData.id = editingNodeId;
@@ -1293,7 +1343,7 @@
             if (node.details) {
                 for (const [key, value] of Object.entries(node.details)) {
                     if (key === "TypeKey" || key === "Notes" || key === "Classification") continue;
-                    
+
                     if (key === "Platform") {
                         let safeValue = escapeHTML(value);
                         let faviconUrl = `https://icon.horse/icon/${safeValue}`;
@@ -1305,6 +1355,11 @@
                                     ${safeValue}
                                 </div>
                             </div>`;
+                    } else if (key === "Link") {
+                        let safeValue = escapeHTML(value);
+                        html += isSafeHttpUrl(value)
+                            ? `<div class="data-group"><div class="data-label">${key}</div><div class="data-value"><a href="${safeValue}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); word-break: break-all;">${safeValue}</a></div></div>`
+                            : `<div class="data-group"><div class="data-label">${key}</div><div class="data-value">${safeValue}</div></div>`;
                     } else {
                         let safeKey = escapeHTML(key);
                         let safeValue = escapeHTML(value);
