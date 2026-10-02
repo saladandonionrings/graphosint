@@ -1999,8 +1999,18 @@
         bank: 'bank', iban: 'bank', finance: 'bank', payment: 'bank'
     };
 
-    const CORPORATE_CASE_TYPES = ['domain', 'employer', 'company', 'netblock', 'cidr', 'asn', 'server'];
+    const CORPORATE_ASSET_TYPES = ['domain', 'website', 'netblock', 'cidr', 'asn', 'prefix', 'server', 'host', 'cert', 'certificate'];
+    const CORPORATE_ORG_TYPES = ['employer', 'company', 'org', 'organization', 'organisation', 'subsidiary'];
     const STATUS_TAG_COLORS = { confirmed: '#10B981', candidate: '#F59E0B', searched: '#64748B', dead: '#EF4444' };
+
+    // What the case is built around, which decides what its "target" node is.
+    // Infrastructure means an organisation; a lone employer does not, since a
+    // people-centric case normally names where the subject works.
+    function isCorporateCase(rawNodes) {
+        var types = rawNodes.map(n => String(n.type || '').toLowerCase());
+        var orgCount = types.filter(t => CORPORATE_ORG_TYPES.includes(t)).length;
+        return types.some(t => CORPORATE_ASSET_TYPES.includes(t)) || orgCount >= 3;
+    }
 
     function caseNodeKey(raw) {
         return String(raw.key || raw.id || raw.label);
@@ -2013,10 +2023,7 @@
             return;
         }
 
-        // A case built around infrastructure puts a company at its centre,
-        // one built around people puts a person there.
-        var targetType = rawNodes.some(n => CORPORATE_CASE_TYPES.includes(String(n.type || '').toLowerCase()))
-            ? 'company' : 'person';
+        var targetType = isCorporateCase(rawNodes) ? 'company' : 'person';
 
         var idByKey = {};
         var typeByKey = {};
