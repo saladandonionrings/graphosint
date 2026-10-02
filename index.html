@@ -379,7 +379,10 @@
             <button class="tool-btn danger" data-tooltip="Delete selection" onclick="deleteSelected()">
                 <i class="ph ph-trash"></i>
             </button>
-            <button class="tool-btn" data-tooltip="Reset workspace" onclick="clearGraph()" style="margin-top: 20px;">
+            <button class="tool-btn" data-tooltip="Arrange graph" onclick="autoArrange()" style="margin-top: 20px;">
+                <i class="ph ph-graph"></i>
+            </button>
+            <button class="tool-btn" data-tooltip="Reset workspace" onclick="clearGraph()">
                 <i class="ph ph-broom"></i>
             </button>
             <button class="tool-btn" id="btn-filter" data-tooltip="Filter entity types" onclick="toggleFilterPanel()" style="margin-top: 20px;">
@@ -725,7 +728,7 @@
                 shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', size: 10, x: 0, y: 5 }
             },
             edges: { width: 2, color: { color: '#52525B', highlight: '#3B82F6' }, smooth: { type: 'continuous' }, arrows: { to: { enabled: false, scaleFactor: 0.6 } } },
-            physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -80, centralGravity: 0.01, springLength: 150, springConstant: 0.08, damping: 0.4 } },
+            physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -220, centralGravity: 0.005, springLength: 220, springConstant: 0.05, damping: 0.5, avoidOverlap: 1 } },
             interaction: { hover: true, multiselect: true },
             manipulation: {
                 enabled: false,
@@ -856,7 +859,7 @@
 
             // Restored nodes may carry a font color baked in under a
             // different theme; resync them to the theme active right now.
-            applyNodeFontColor();
+            applyNodeFontTheme();
 
             // Take an initial "snapshot" right after startup
             setTimeout(saveSnapshot, 200);
@@ -867,6 +870,7 @@
                 saveSnapshot();
                 autoSaveGraph();
                 scheduleMinimapDraw();
+                applyGraphSpacing();
             }
 
             nodes.on('*', handleGraphMutation);
@@ -976,16 +980,24 @@
     }
 
     // --- THEME ---
-    function applyNodeFontColor() {
-        var color = document.documentElement.classList.contains('light') ? '#0F172A' : '#F8FAFC';
-        nodes.update(nodes.get().map(n => ({ id: n.id, font: Object.assign({}, n.font, { color: color }) })));
+    // Labels carry an outline in the canvas color so they stay readable where
+    // they cross an edge or another label on a dense graph.
+    function nodeFontTheme() {
+        return document.documentElement.classList.contains('light')
+            ? { color: '#0F172A', strokeWidth: 4, strokeColor: '#F1F5F9' }
+            : { color: '#F8FAFC', strokeWidth: 4, strokeColor: '#09090B' };
+    }
+
+    function applyNodeFontTheme() {
+        var theme = nodeFontTheme();
+        nodes.update(nodes.get().map(n => ({ id: n.id, font: Object.assign({}, n.font, theme) })));
     }
 
     function toggleTheme() {
         var isLight = document.documentElement.classList.toggle('light');
         localStorage.setItem('GraphOSINT_Theme', isLight ? 'light' : 'dark');
         document.getElementById('btn-theme').innerHTML = isLight ? '<i class="ph ph-moon"></i>' : '<i class="ph ph-sun"></i>';
-        applyNodeFontColor();
+        applyNodeFontTheme();
         scheduleMinimapDraw();
     }
 
@@ -996,6 +1008,167 @@
         document.getElementById('btn-theme').innerHTML = isLight ? '<i class="ph ph-moon"></i>' : '<i class="ph ph-sun"></i>';
     }
     initTheme();
+
+    // --- LAYOUT ---
+    // Spacing has to grow with the graph: values that read well for a dozen
+    // nodes turn into a hairball at a hundred. Only applied when the graph
+    // crosses into another size bracket, so physics is not restarted on
+    // every single edit.
+    const SPACING_PRESETS = [
+        { springLength: 200, gravitationalConstant: -200 },
+        { springLength: 280, gravitationalConstant: -340 },
+        { springLength: 360, gravitationalConstant: -520 }
+    ];
+    var spacingBracket = null;
+
+    function applyGraphSpacing() {
+        if (!network) return;
+        var count = nodes.length;
+        var bracket = count <= 30 ? 0 : count <= 80 ? 1 : 2;
+        if (bracket === spacingBracket) return;
+        spacingBracket = bracket;
+        network.setOptions({ physics: { forceAtlas2Based: SPACING_PRESETS[bracket] } });
+    }
+
+    // An investigation graph is hub-and-spoke, so a radial tree reads far
+    // better than wherever the force simulation happens to settle. Each ring
+    // is widened to fit the number of nodes on it, and every subtree gets an
+    // angular slice proportional to how many leaves it carries.
+    var LAYOUT_NODE_SPACING = 190;
+    var LAYOUT_RING_GAP = 280;
+    // A crowded ring is laid out in two staggered lanes rather than one huge
+    // circle: same spacing between nodes, roughly half the radius, so the
+    // whole graph stays legible once it is fitted to the screen.
+    var LAYOUT_STAGGER_FROM = 12;
+    var LAYOUT_STAGGER_OFFSET = 130;
+
+    function arrangeGraph(rootId) {
+        var all = nodes.get();
+        if (all.length === 0) return;
+
+        var edgeList = edges.get();
+        if (edgeList.length === 0) {
+            arrangeAsGrid(all);
+            return;
+        }
+
+        var adjacency = {};
+        all.forEach(n => { adjacency[n.id] = []; });
+        edgeList.forEach(function(e) {
+            if (!adjacency[e.from] || !adjacency[e.to] || e.from === e.to) return;
+            adjacency[e.from].push(e.to);
+            adjacency[e.to].push(e.from);
+        });
+
+        if (!rootId || !adjacency[rootId]) {
+            rootId = all.reduce((best, n) => adjacency[n.id].length > adjacency[best.id].length ? n : best, all[0]).id;
+        }
+
+        // Breadth-first: every node keeps one parent, back-edges are ignored
+        // so the structure stays a tree even when the graph has cycles.
+        var depth = {}, children = {}, order = [rootId];
+        all.forEach(n => { children[n.id] = []; });
+        depth[rootId] = 0;
+        for (var cursor = 0; cursor < order.length; cursor++) {
+            var current = order[cursor];
+            adjacency[current].forEach(function(next) {
+                if (depth[next] !== undefined) return;
+                depth[next] = depth[current] + 1;
+                children[current].push(next);
+                order.push(next);
+            });
+        }
+
+        // Whatever the root cannot reach hangs off it as its own branch
+        all.forEach(function(n) {
+            if (depth[n.id] !== undefined) return;
+            depth[n.id] = 1;
+            children[rootId].push(n.id);
+            order.push(n.id);
+        });
+
+        var weight = {};
+        for (var i = order.length - 1; i >= 0; i--) {
+            var id = order[i];
+            weight[id] = children[id].length === 0
+                ? 1
+                : children[id].reduce((sum, child) => sum + weight[child], 0);
+        }
+
+        var perRing = {};
+        var maxDepth = 0;
+        order.forEach(function(id) {
+            perRing[depth[id]] = (perRing[depth[id]] || 0) + 1;
+            if (depth[id] > maxDepth) maxDepth = depth[id];
+        });
+
+        var radii = [0];
+        var staggered = [false];
+        for (var level = 1; level <= maxDepth; level++) {
+            var ringCount = perRing[level] || 1;
+            staggered[level] = ringCount > LAYOUT_STAGGER_FROM;
+            var spread = staggered[level] ? ringCount / 2 * 1.2 : ringCount;
+            var circumferenceNeeded = spread * LAYOUT_NODE_SPACING / (2 * Math.PI);
+            radii[level] = Math.max(radii[level - 1] + LAYOUT_RING_GAP, circumferenceNeeded);
+        }
+
+        var positions = {};
+        positions[rootId] = { x: 0, y: 0 };
+        var laneCursor = {};
+
+        (function place(id, startAngle, endAngle) {
+            var kids = children[id];
+            if (kids.length === 0) return;
+            var total = kids.reduce((sum, child) => sum + weight[child], 0) || 1;
+            var angle = startAngle;
+            kids.forEach(function(child) {
+                var level = depth[child];
+                var span = (endAngle - startAngle) * (weight[child] / total);
+                var middle = angle + span / 2;
+                laneCursor[level] = (laneCursor[level] || 0) + 1;
+                var radius = radii[level] + (staggered[level] && laneCursor[level] % 2 ? LAYOUT_STAGGER_OFFSET : 0);
+                positions[child] = { x: Math.cos(middle) * radius, y: Math.sin(middle) * radius };
+                place(child, angle, angle + span);
+                angle += span;
+            });
+        })(rootId, -Math.PI / 2, Math.PI * 1.5);
+
+        freezeAt(all, positions);
+    }
+
+    function arrangeAsGrid(all) {
+        var columns = Math.ceil(Math.sqrt(all.length));
+        var positions = {};
+        all.forEach(function(n, index) {
+            positions[n.id] = {
+                x: (index % columns - (columns - 1) / 2) * LAYOUT_NODE_SPACING,
+                y: (Math.floor(index / columns) - (Math.ceil(all.length / columns) - 1) / 2) * 140
+            };
+        });
+        freezeAt(all, positions);
+    }
+
+    // Positions are pinned rather than handed to the simulation, so the
+    // arrangement stays exactly as computed. Dragging still works.
+    function freezeAt(all, positions) {
+        nodes.update(all.map(function(n) {
+            var pos = positions[n.id] || { x: 0, y: 0 };
+            return { id: n.id, x: Math.round(pos.x), y: Math.round(pos.y), physics: false };
+        }));
+
+        // vis applies dataset changes on its next redraw, so fitting right
+        // away would frame the positions the nodes just left.
+        network.once("afterDrawing", function() {
+            network.fit({ animation: { duration: 600 } });
+        });
+        network.redraw();
+    }
+
+    function autoArrange() {
+        if (nodes.length === 0) { showToast("Nothing to arrange.", "error"); return; }
+        arrangeGraph(null);
+        showToast("Graph arranged.", "success");
+    }
 
     // --- MINIMAP ---
     var minimapRAF = null;
@@ -1282,8 +1455,6 @@
             imgUrl = createIconUrl(config.path, config.color);
         }
 
-        var fontColor = document.documentElement.classList.contains('light') ? '#0F172A' : '#F8FAFC';
-
         var nodeData = {
             shape: 'circularImage',
             image: imgUrl,
@@ -1294,12 +1465,11 @@
                 highlight: { border: '#FFFFFF' }
             },
             borderWidth: 2,
-            font: {
-                color: fontColor,
+            font: Object.assign({
                 face: 'JetBrains Mono',
                 size: 13,
                 align: 'center'
-            },
+            }, nodeFontTheme()),
             details: {
                 "Classification": config.title,
                 "Raw Data": value,
@@ -2023,6 +2193,7 @@
             return;
         }
 
+        var intoEmptyWorkspace = nodes.length === 0;
         var targetType = isCorporateCase(rawNodes) ? 'company' : 'person';
 
         var idByKey = {};
@@ -2093,11 +2264,12 @@
             addCaseEdge(String(from), String(to), String(ed.label || 'LINKED').toUpperCase());
         });
 
+        var rootRaw = rawNodes.find(n => String(n.type || '').toLowerCase() === 'target') || rawNodes[0];
+        var rootKey = caseNodeKey(rootRaw);
+
         // No explicit edge list (some exports only describe the structure in
         // prose): hang everything not already referenced off the case target.
         if (rawEdges.length === 0) {
-            var rootRaw = rawNodes.find(n => String(n.type || '').toLowerCase() === 'target') || rawNodes[0];
-            var rootKey = caseNodeKey(rootRaw);
             rawNodes.forEach(function(raw) {
                 var key = caseNodeKey(raw);
                 if (key === rootKey || referenced[key]) return;
@@ -2107,6 +2279,11 @@
 
         nodes.add(newNodes);
         edges.add(newEdges);
+
+        // Lay the case out around its target, but only when it arrives in an
+        // empty workspace: merging into existing work must not move it.
+        if (intoEmptyWorkspace) arrangeGraph(idByKey[rootKey]);
+
         showToast(`Case imported: ${newNodes.length} entities, ${newEdges.length} links.`, "success");
     }
 
@@ -2147,6 +2324,7 @@
 
             if (/^type\s*,/i.test(lines[0])) lines.shift();
 
+            var intoEmptyWorkspace = nodes.length === 0;
             var center = network.getViewPosition();
             var added = 0;
 
@@ -2170,7 +2348,7 @@
                 added++;
             });
 
-            network.fit({ animation: { duration: 800 } });
+            if (intoEmptyWorkspace) arrangeGraph(null); else network.fit({ animation: { duration: 800 } });
             document.getElementById('csvInput').value = '';
             showToast(`${added} entities imported from CSV.`, "success");
         };

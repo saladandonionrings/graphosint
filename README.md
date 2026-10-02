@@ -18,6 +18,11 @@ tags, photo attachments, filter by entity type, directed links,
 neighbor highlight on hover, minimap, light/dark theme, graph stats,
 CSV/JSON import, PNG/SVG export, CSV asset inventory export.
 
+Imported cases are laid out as a radial tree around their target, with
+ring spacing derived from how many nodes sit on each ring, so a large
+case stays readable. The arrange button re-runs that layout on the
+whole graph at any time.
+
 ## Importing a case
 
 `Import JSON` takes a GraphOSINT export, or a foreign case export whose
