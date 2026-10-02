@@ -350,6 +350,7 @@
             <div style="width: 1px; background: var(--border); margin: 0 8px;"></div>
             <button class="btn-top" onclick="exportPNG()"><i class="ph ph-image"></i> Export PNG</button>
             <button class="btn-top" onclick="exportSVG()"><i class="ph ph-file-svg"></i> Export SVG</button>
+            <button class="btn-top" onclick="exportCSV()"><i class="ph ph-list-checks"></i> Export CSV</button>
             <div style="width: 1px; background: var(--border); margin: 0 8px;"></div>
             <button class="btn-top" onclick="openStatsModal()"><i class="ph ph-chart-bar"></i> Stats</button>
             <button class="btn-top" id="btn-theme" onclick="toggleTheme()" data-tooltip="Toggle theme"><i class="ph ph-sun"></i></button>
@@ -415,11 +416,15 @@
                 <select class="custom-select" id="nodeType">
                     <option value="person">Identity</option>
                     <option value="company">Company</option>
+                    <option value="domain">Domain</option>
+                    <option value="netblock">Netblock / ASN</option>
+                    <option value="server">Server / Host</option>
+                    <option value="ip">IP Address</option>
+                    <option value="cert">Certificate</option>
                     <option value="phone">Phone</option>
                     <option value="email">Email Address</option>
                     <option value="address">Physical Address</option>
                     <option value="id">Username</option>
-                    <option value="ip">IP Address</option>
                     <option value="bank">Bank Information</option>
                     <option value="note">Note</option>
                 </select>
@@ -647,6 +652,10 @@
         const ENTITY_CONFIG = {
             person:  { title: 'IDENTITY', color: '#0F172A', border: '#3B82F6', path: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
             company: { title: 'COMPANY', color: '#78350F', border: '#F59E0B', path: 'M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z' },
+            domain:  { title: 'DOMAIN', color: '#134E4A', border: '#2DD4BF', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z' },
+            netblock:{ title: 'NETBLOCK', color: '#701A75', border: '#E879F9', path: 'M17 16l-4-4V8.82C14.16 8.4 15 7.3 15 6c0-1.66-1.34-3-3-3S9 4.34 9 6c0 1.3.84 2.4 2 2.82V12l-4 4H3v5h5v-3.05l4-4.2 4 4.2V21h5v-5h-4z' },
+            server:  { title: 'SERVER', color: '#365314', border: '#A3E635', path: 'M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z' },
+            cert:    { title: 'CERTIFICATE', color: '#881337', border: '#FB7185', path: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z' },
             phone:   { title: 'PHONE', color: '#064E3B', border: '#10B981', path: 'M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z' },
             email:   { title: 'E-MAIL', color: '#7C2D12', border: '#F97316', path: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z' },
             address: { title: 'LOCATION', color: '#4C1D95', border: '#8B5CF6', path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
@@ -662,7 +671,10 @@
             { color: '#F97316', keywords: ['LIVES', 'RESIDENCE', 'RESIDES', 'NEIGHBOR', 'ADDRESS', 'LODGES'] },
             { color: '#EAB308', keywords: ['PAYMENT', 'BANK', 'BANK ACCOUNT', 'TRANSFER', 'FINANCE', 'OWNER', 'TENANT', 'SALARY'] },
             { color: '#06B6D4', keywords: ['CALL', 'MESSAGE', 'CONTACT', 'PHONE', 'EMAIL', 'EXCHANGE', 'CORRESPONDS'] },
-            { color: '#3B82F6', keywords: ['USERNAME', 'PROFILE', 'USES', 'ALIAS', 'ACCOUNT'] }
+            { color: '#3B82F6', keywords: ['USERNAME', 'PROFILE', 'USES', 'ALIAS', 'ACCOUNT'] },
+            { color: '#2DD4BF', keywords: ['DOMAIN', 'SUBDOMAIN', 'RESOLVES', 'HOSTED', 'HOSTS', 'DNS', 'NAMESERVER', 'CNAME', 'MX', 'CERTIFICATE', 'REGISTRAR'] },
+            { color: '#E879F9', keywords: ['NETBLOCK', 'CIDR', 'ASN', 'PREFIX', 'ANNOUNC', 'RANGE', 'HOSTING'] },
+            { color: '#F59E0B', keywords: ['SUBSIDIARY', 'FILIALE', 'PARENT OF', 'OWNS', 'ACQUIRED', 'MERGED', 'HOLDING', 'DIVISION', 'BRANCH'] }
         ];
         const EDGE_DEFAULT_COLOR = '#52525B';
 
@@ -1846,6 +1858,41 @@
         showToast("JSON save successful.", "success");
     }
 
+    // Flat inventory of every entity: the asset list an infrastructure case
+    // is usually after, in the same column order the CSV import expects.
+    function exportCSV() {
+        var nodeList = nodes.get();
+        if (nodeList.length === 0) { showToast("Nothing to export.", "error"); return; }
+
+        function csvField(value) {
+            var text = value === undefined || value === null ? '' : String(value);
+            return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+        }
+
+        var rows = [['type', 'value', 'platform', 'classification', 'tags', 'links', 'notes'].join(',')];
+        nodeList.forEach(function(n) {
+            var details = n.details || {};
+            rows.push([
+                csvField(details.TypeKey || 'note'),
+                csvField(details["Raw Data"] || n.label || ''),
+                csvField(details.Platform || ''),
+                csvField(details.Classification || ''),
+                csvField((n.tags || []).map(t => t.text).join(' ')),
+                csvField(network.getConnectedEdges(n.id).length),
+                csvField(details.Notes || '')
+            ].join(','));
+        });
+
+        var blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.download = 'GraphOSINT-assets.csv';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast(`${nodeList.length} entities exported to CSV.`, "success");
+    }
+
     function importJSON(event) {
         var file = event.target.files[0];
         if (!file) return;
@@ -1853,68 +1900,207 @@
         reader.onload = function(e) {
             try {
                 var data = JSON.parse(e.target.result);
-                
-                var safeNodes = [];
-                if (data.nodes && Array.isArray(data.nodes)) {
-                    data.nodes.forEach(function(n) {
-                        if (n.id && n.details) {
-                            safeNodes.push({
-                                id: escapeHTML(String(n.id)),
-                                x: Number(n.x) || 0,
-                                y: Number(n.y) || 0,
-                                label: n.label ? String(n.label) : "",
-                                shape: n.shape,
-                                image: n.image,
-                                size: Number(n.size) || 24,
-                                color: n.color,
-                                font: n.font,
-                                borderWidth: 2,
-                                physics: n.physics === false ? false : undefined,
-                                details: n.details,
-                                tags: Array.isArray(n.tags) ? n.tags.filter(t => t && t.text).map(t => ({
-                                    id: t.id ? escapeHTML(String(t.id)) : generateSafeUUID(),
-                                    text: escapeHTML(String(t.text)),
-                                    color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#3B82F6'
-                                })) : [],
-                                photos: Array.isArray(n.photos) ? n.photos.filter(p => p && /^data:image\//.test(p.dataUrl)).map(p => ({
-                                    id: p.id ? escapeHTML(String(p.id)) : generateSafeUUID(),
-                                    dataUrl: p.dataUrl
-                                })) : []
-                            });
-                        }
-                    });
+                if (!data || !Array.isArray(data.nodes)) {
+                    showToast("Invalid JSON file.", "error");
+                    return;
                 }
 
-                var safeEdges = [];
-                if (data.edges && Array.isArray(data.edges)) {
-                    data.edges.forEach(function(ed) {
-                        if (ed.from && ed.to) {
-                            var edLabel = ed.label ? escapeHTML(String(ed.label)) : "";
-                            safeEdges.push({
-                                id: escapeHTML(String(ed.id)),
-                                from: escapeHTML(String(ed.from)),
-                                to: escapeHTML(String(ed.to)),
-                                label: edLabel,
-                                color: edLabel ? { color: colorForEdgeLabel(edLabel), highlight: '#FFFFFF' } : undefined,
-                                font: ed.font
-                            });
-                        }
-                    });
+                // A GraphOSINT export carries its own node fields; anything
+                // else is treated as a foreign case export and converted.
+                if (data.nodes.some(n => n && n.id && n.details)) {
+                    importNativeGraph(data);
+                } else {
+                    importCaseExport(data);
                 }
 
-                nodes.add(safeNodes);
-                edges.add(safeEdges);
-                
-                network.fit({animation: {duration: 1000}});
-                document.getElementById('fileInput').value = '';
-                showToast("Database loaded.", "success");
-                
+                network.fit({ animation: { duration: 1000 } });
             } catch (err) {
                 console.error("Parse error:", err);
                 showToast("Invalid JSON file.", "error");
             }
+            document.getElementById('fileInput').value = '';
         };
         reader.readAsText(file);
+    }
+
+    function importNativeGraph(data) {
+        var safeNodes = [];
+        if (data.nodes && Array.isArray(data.nodes)) {
+            data.nodes.forEach(function(n) {
+                if (n.id && n.details) {
+                    safeNodes.push({
+                        id: escapeHTML(String(n.id)),
+                        x: Number(n.x) || 0,
+                        y: Number(n.y) || 0,
+                        label: n.label ? String(n.label) : "",
+                        shape: n.shape,
+                        image: n.image,
+                        size: Number(n.size) || 24,
+                        color: n.color,
+                        font: n.font,
+                        borderWidth: 2,
+                        physics: n.physics === false ? false : undefined,
+                        details: n.details,
+                        tags: Array.isArray(n.tags) ? n.tags.filter(t => t && t.text).map(t => ({
+                            id: t.id ? escapeHTML(String(t.id)) : generateSafeUUID(),
+                            text: escapeHTML(String(t.text)),
+                            color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#3B82F6'
+                        })) : [],
+                        photos: Array.isArray(n.photos) ? n.photos.filter(p => p && /^data:image\//.test(p.dataUrl)).map(p => ({
+                            id: p.id ? escapeHTML(String(p.id)) : generateSafeUUID(),
+                            dataUrl: p.dataUrl
+                        })) : []
+                    });
+                }
+            });
+        }
+
+        var safeEdges = [];
+        if (data.edges && Array.isArray(data.edges)) {
+            data.edges.forEach(function(ed) {
+                if (ed.from && ed.to) {
+                    var edLabel = ed.label ? escapeHTML(String(ed.label)) : "";
+                    safeEdges.push({
+                        id: escapeHTML(String(ed.id)),
+                        from: escapeHTML(String(ed.from)),
+                        to: escapeHTML(String(ed.to)),
+                        label: edLabel,
+                        color: edLabel ? { color: colorForEdgeLabel(edLabel), highlight: '#FFFFFF' } : undefined,
+                        font: ed.font
+                    });
+                }
+            });
+        }
+
+        nodes.add(safeNodes);
+        edges.add(safeEdges);
+        showToast("Database loaded.", "success");
+    }
+
+    // --- CASE EXPORT IMPORT ---
+    // Accepts the generic "case" shape other OSINT tooling produces: nodes
+    // described by key/type/label/notes/status instead of GraphOSINT's own
+    // node fields. Unknown types land on "note" rather than being dropped.
+    const CASE_TYPE_MAP = {
+        person: 'person', individual: 'person', people: 'person', identity: 'person',
+        employer: 'company', company: 'company', org: 'company', organization: 'company',
+        organisation: 'company', subsidiary: 'company', entity: 'company', group: 'company',
+        domain: 'domain', website: 'domain', site: 'domain', url: 'domain', hostname: 'domain',
+        netblock: 'netblock', cidr: 'netblock', asn: 'netblock', prefix: 'netblock',
+        network: 'netblock', range: 'netblock',
+        server: 'server', host: 'server', service: 'server', machine: 'server',
+        cert: 'cert', certificate: 'cert', ssl: 'cert', tls: 'cert',
+        ip: 'ip', ipv4: 'ip', ipv6: 'ip',
+        location: 'address', address: 'address', place: 'address', city: 'address', country: 'address',
+        email: 'email', mail: 'email',
+        phone: 'phone', tel: 'phone', msisdn: 'phone',
+        username: 'id', user: 'id', handle: 'id', alias: 'id', account: 'id',
+        social: 'id', profile: 'id',
+        bank: 'bank', iban: 'bank', finance: 'bank', payment: 'bank'
+    };
+
+    const CORPORATE_CASE_TYPES = ['domain', 'employer', 'company', 'netblock', 'cidr', 'asn', 'server'];
+    const STATUS_TAG_COLORS = { confirmed: '#10B981', candidate: '#F59E0B', searched: '#64748B', dead: '#EF4444' };
+
+    function caseNodeKey(raw) {
+        return String(raw.key || raw.id || raw.label);
+    }
+
+    function importCaseExport(data) {
+        var rawNodes = data.nodes.filter(n => n && (n.key || n.id || n.label));
+        if (rawNodes.length === 0) {
+            showToast("No usable entities in this file.", "error");
+            return;
+        }
+
+        // A case built around infrastructure puts a company at its centre,
+        // one built around people puts a person there.
+        var targetType = rawNodes.some(n => CORPORATE_CASE_TYPES.includes(String(n.type || '').toLowerCase()))
+            ? 'company' : 'person';
+
+        var idByKey = {};
+        var typeByKey = {};
+        var newNodes = [];
+
+        rawNodes.forEach(function(raw, index) {
+            var key = caseNodeKey(raw);
+            if (idByKey[key]) return;
+
+            var rawType = String(raw.type || '').toLowerCase();
+            var type = rawType === 'target' ? targetType : (CASE_TYPE_MAP[rawType] || 'note');
+            var nodeData = buildNodeData(type, String(raw.label || raw.key || raw.id), '');
+
+            if (raw.value) nodeData.details["Value"] = String(raw.value);
+            if (raw.source) nodeData.details["Source"] = String(raw.source);
+            if (raw.status) nodeData.details["Status"] = String(raw.status);
+            if (raw.confidence) nodeData.details["Confidence"] = String(raw.confidence);
+            if (raw.notes) nodeData.details.Notes = String(raw.notes);
+
+            var statusColor = STATUS_TAG_COLORS[String(raw.status || '').toLowerCase()];
+            nodeData.tags = statusColor
+                ? [{ id: generateSafeUUID(), text: String(raw.status).toLowerCase(), color: statusColor }]
+                : [];
+            nodeData.photos = [];
+            nodeData.id = generateSafeUUID();
+
+            // Golden-angle spiral: a freshly imported case starts spread out
+            // instead of piling every node on the origin.
+            var angle = index * 2.39996;
+            var radius = 70 * Math.sqrt(index + 1);
+            nodeData.x = Math.cos(angle) * radius;
+            nodeData.y = Math.sin(angle) * radius;
+
+            idByKey[key] = nodeData.id;
+            typeByKey[key] = type;
+            newNodes.push(nodeData);
+        });
+
+        var newEdges = [];
+        var referenced = {};
+
+        function addCaseEdge(fromKey, toKey, label) {
+            if (!idByKey[fromKey] || !idByKey[toKey] || fromKey === toKey) return;
+            newEdges.push({
+                id: generateSafeUUID(),
+                from: idByKey[fromKey],
+                to: idByKey[toKey],
+                label: label,
+                color: { color: colorForEdgeLabel(label), highlight: '#FFFFFF' },
+                font: { size: 11, color: '#A1A1AA', background: '#18181B', strokeWidth: 0, align: 'horizontal' }
+            });
+            referenced[toKey] = true;
+        }
+
+        // Reference fields on a node, e.g. "domain": "nge.fr" on a subsidiary.
+        rawNodes.forEach(function(raw) {
+            var key = caseNodeKey(raw);
+            if (raw.domain) addCaseEdge(key, String(raw.domain), 'DOMAIN');
+            if (raw.parent) addCaseEdge(String(raw.parent), key, 'PARENT OF');
+        });
+
+        var rawEdges = Array.isArray(data.edges) ? data.edges : [];
+        rawEdges.forEach(function(ed) {
+            var from = ed.source || ed.from;
+            var to = ed.target || ed.to;
+            if (!from || !to) return;
+            addCaseEdge(String(from), String(to), String(ed.label || 'LINKED').toUpperCase());
+        });
+
+        // No explicit edge list (some exports only describe the structure in
+        // prose): hang everything not already referenced off the case target.
+        if (rawEdges.length === 0) {
+            var rootRaw = rawNodes.find(n => String(n.type || '').toLowerCase() === 'target') || rawNodes[0];
+            var rootKey = caseNodeKey(rootRaw);
+            rawNodes.forEach(function(raw) {
+                var key = caseNodeKey(raw);
+                if (key === rootKey || referenced[key]) return;
+                addCaseEdge(rootKey, key, typeByKey[key] === 'company' ? 'SUBSIDIARY' : 'LINKED');
+            });
+        }
+
+        nodes.add(newNodes);
+        edges.add(newEdges);
+        showToast(`Case imported: ${newNodes.length} entities, ${newEdges.length} links.`, "success");
     }
 
     // --- CSV / PLAIN LIST IMPORT ---
