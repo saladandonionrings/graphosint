@@ -6,8 +6,9 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
 
 Link analysis tool for OSINT. Create, connect, and organize entities
-(people, accounts, addresses, organizations, etc.) on an interactive
-graph in the browser.
+on an interactive graph in the browser. Works for people-centric cases
+(identities, accounts, emails, locations) and for corporate ones
+(companies, domains, netblocks, servers, IPs, certificates).
 
 ## Features
 
@@ -15,7 +16,18 @@ Create entities and links, label links, search (including notes and
 tags), merge duplicate entities, undo/redo, local autosave, colored
 tags, photo attachments, filter by entity type, directed links,
 neighbor highlight on hover, minimap, light/dark theme, graph stats,
-CSV/JSON import, PNG/SVG export.
+CSV/JSON import, PNG/SVG export, CSV asset inventory export.
+
+## Importing a case
+
+`Import JSON` takes a GraphOSINT export, or a foreign case export whose
+nodes are described by `key` / `type` / `label` / `notes` / `status`.
+Types are mapped onto the built-in ones (`employer` and `org` become
+companies, `cidr` and `asn` become netblocks, unknown types become
+notes), `status` becomes a colored tag, and links come from an `edges`
+array when present. Without one, reference fields such as
+`"domain": "example.com"` are followed and anything left unreferenced
+is attached to the case target.
 
 ## Usage
 
