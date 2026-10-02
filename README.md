@@ -29,6 +29,12 @@ array when present. Without one, reference fields such as
 `"domain": "example.com"` are followed and anything left unreferenced
 is attached to the case target.
 
+`examples/` holds two fictional fixtures covering both paths:
+`person-case.json` (identities, aliases, accounts, family, with an
+explicit `edges` array) and `company-case.json` (subsidiaries, domains,
+netblocks, servers, certificates, structure rebuilt from reference
+fields alone).
+
 ## Usage
 
 `index.html` is standalone, open it directly in a browser.

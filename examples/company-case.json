@@ -1,0 +1,54 @@
+{
+  "case": "Groupe Vallora (test fixture)",
+  "disclaimer": "Fictional test data. Every company, domain, host, certificate, IP and person is invented. IPs use the RFC 5737 documentation ranges, AS numbers use the RFC 5398 private range, domains use RFC 2606 reserved TLDs.",
+  "exported_at": "2026-10-02",
+  "methodology": "Passive reconnaissance only: public registry, corporate site, WHOIS, DNS, certificate transparency. No active scanning. This file carries no edges array on purpose, so the importer has to rebuild the structure from the reference fields and the case target.",
+  "nodes": [
+    {"key": "groupe vallora", "type": "target", "label": "Groupe Vallora", "status": "confirmed", "source": "company registry", "notes": "Fictional infrastructure and energy group. Head office Lyon, 11 subsidiaries, 4 countries. Root of the corporate test fixture.", "domain": "vallora.example"},
+
+    {"key": "vallora.example", "type": "domain", "status": "confirmed", "source": "WHOIS", "notes": "Corporate domain. Created 2009-04-22, registrar EXAMPLE-REGISTRAR, holder Groupe Vallora. NS ns1/ns2.vallora.example. A 192.0.2.10."},
+    {"key": "vallora-energie.example", "type": "domain", "status": "confirmed", "source": "WHOIS", "notes": "A 192.0.2.10, same host as the corporate site. Same registrar and holder."},
+    {"key": "vallora-reseaux.example", "type": "domain", "status": "confirmed", "source": "WHOIS", "notes": "A 192.0.2.10. Same hosting block as the rest of the group."},
+    {"key": "vallora-maritime.example", "type": "domain", "status": "confirmed", "source": "WHOIS", "notes": "A 192.0.2.11. Same netblock, distinct host."},
+    {"key": "hydris.example.net", "type": "domain", "status": "confirmed", "source": "WHOIS", "notes": "A 198.51.100.42, separate netblock and registrar: acquired in 2024, infrastructure not yet migrated."},
+    {"key": "cerbat.example.org", "type": "domain", "status": "confirmed", "source": "WHOIS", "notes": "A 198.51.100.42. Acquired alongside Hydris, shares its hosting."},
+    {"key": "nordlink.example.net", "type": "domain", "status": "confirmed", "source": "WHOIS", "notes": "A 192.0.2.11. Registered in Norway, holder details redacted by the registrar."},
+    {"key": "iberia.vallora.example", "type": "domain", "status": "confirmed", "source": "DNS", "notes": "Subdomain used by the Spanish branch. CNAME to www-01.vallora.example."},
+    {"key": "vallora-legacy.example", "type": "domain", "status": "dead", "source": "WHOIS", "notes": "Expired 2021-11-03, no longer resolves. Kept to document the old brand."},
+
+    {"key": "vallora energie", "type": "employer", "label": "Vallora Energie SAS", "status": "confirmed", "source": "company registry", "notes": "Power networks and substations. Founded 1998, integrated 2009.", "domain": "vallora-energie.example"},
+    {"key": "vallora reseaux", "type": "employer", "label": "Vallora Reseaux SAS", "status": "confirmed", "source": "company registry", "notes": "Fibre and telecom networks. Created 2016 out of the former Vallora Telecom unit.", "domain": "vallora-reseaux.example"},
+    {"key": "vallora maritime", "type": "employer", "label": "Vallora Maritime SAS", "status": "confirmed", "source": "company registry", "notes": "Port and offshore civil works. Head office Marseille.", "domain": "vallora-maritime.example"},
+    {"key": "hydris", "type": "employer", "label": "Hydris SA", "status": "confirmed", "source": "press release", "notes": "Water treatment and distribution. Acquired February 2024, still operating under its own brand.", "domain": "hydris.example.net"},
+    {"key": "cerbat", "type": "employer", "label": "Cerbat SARL", "status": "confirmed", "source": "company registry", "notes": "Earthworks and foundations. Acquired February 2024 in the same deal as Hydris.", "domain": "cerbat.example.org"},
+    {"key": "nordlink", "type": "employer", "label": "Nordlink AS", "status": "confirmed", "source": "corporate site", "notes": "Norwegian branch, offshore cable laying. Oslo.", "domain": "nordlink.example.net"},
+    {"key": "vallora iberia", "type": "employer", "label": "Vallora Iberia SL", "status": "confirmed", "source": "corporate site", "notes": "Spanish branch, Madrid. Rail and road infrastructure.", "domain": "iberia.vallora.example"},
+    {"key": "vallora maroc", "type": "employer", "label": "Vallora Maroc SARL", "status": "candidate", "source": "press article", "notes": "Mentioned in a trade article as a 2025 opening. No registry entry located, no domain found."},
+
+    {"key": "cerbat marine", "type": "employer", "label": "Cerbat Marine SARL", "status": "confirmed", "source": "company registry", "notes": "Dredging unit. Subsidiary of Cerbat, not held directly by the group.", "parent": "cerbat"},
+    {"key": "hydris lab", "type": "employer", "label": "Hydris Lab SAS", "status": "confirmed", "source": "company registry", "notes": "Water analysis laboratory. Held by Hydris.", "parent": "hydris"},
+
+    {"key": "192.0.2.0/24 AS64500", "type": "netblock", "label": "192.0.2.0/24 (AS64500)", "status": "confirmed", "source": "RIPE", "notes": "Hosting range used by the group's main sites. Announced by AS64500, the group's hosting provider."},
+    {"key": "198.51.100.0/24 AS64501", "type": "netblock", "label": "198.51.100.0/24 (AS64501)", "status": "confirmed", "source": "RIPE", "notes": "Range inherited with the Hydris and Cerbat acquisition. Different provider, AS64501."},
+
+    {"key": "192.0.2.10", "type": "ip", "status": "confirmed", "source": "DNS", "notes": "Shared web host: corporate site plus the Energie and Reseaux sites.", "parent": "192.0.2.0/24 AS64500"},
+    {"key": "198.51.100.42", "type": "ip", "status": "confirmed", "source": "DNS", "notes": "Hosts the two acquired brands. Still on the former owner's infrastructure.", "parent": "198.51.100.0/24 AS64501"},
+
+    {"key": "www-01.vallora.example", "type": "server", "status": "confirmed", "source": "DNS + headers", "notes": "Public web front end. Server header reports a generic reverse proxy, no version disclosed.", "domain": "vallora.example"},
+    {"key": "mail-01.vallora.example", "type": "server", "status": "confirmed", "source": "MX record", "notes": "Primary MX, priority 10. SPF record authorises this host only.", "domain": "vallora.example"},
+    {"key": "vpn.hydris.example.net", "type": "server", "status": "candidate", "source": "certificate transparency", "notes": "Hostname appears in a certificate log but does not resolve publicly. Possibly internal or decommissioned.", "domain": "hydris.example.net"},
+
+    {"key": "cert-wildcard", "type": "cert", "label": "CN=*.vallora.example", "status": "confirmed", "source": "certificate transparency", "notes": "Wildcard certificate, issued 2026-01-15, expires 2027-01-15. SANs cover the corporate domain and both brand domains.", "domain": "vallora.example"},
+    {"key": "cert-hydris", "type": "cert", "label": "CN=hydris.example.net", "status": "confirmed", "source": "certificate transparency", "notes": "Single-name certificate issued by a different CA than the group standard. Another sign the acquisition is not yet migrated.", "domain": "hydris.example.net"},
+
+    {"key": "hq", "type": "address", "label": "4 avenue des Freres Lumiere, 69008 Lyon", "status": "confirmed", "source": "company registry", "notes": "Registered head office of the group and of three subsidiaries."},
+    {"key": "contact@vallora.example", "type": "email", "status": "confirmed", "source": "corporate site", "notes": "Generic contact address published on the corporate site."},
+    {"key": "press@vallora.example", "type": "email", "status": "searched", "source": "press release footer", "notes": "Appears on 2023 press releases, absent from the current site. May be retired."},
+
+    {"key": "marion delcourt", "type": "person", "label": "Marion Delcourt", "status": "confirmed", "source": "company registry", "notes": "Chair and CEO. Named in the registry entry for the group and for Vallora Energie."},
+    {"key": "samuel reyes", "type": "person", "label": "Samuel Reyes", "status": "candidate", "source": "conference programme", "notes": "Listed as CTO in a 2025 conference programme. No registry mandate found under this name."},
+
+    {"key": "note-hosting", "type": "note", "label": "Hosting consolidation gap", "status": "confirmed", "source": "analysis", "notes": "Everything except the February 2024 acquisitions sits in AS64500. Hydris and Cerbat still run on AS64501 with a different CA, two years after the deal."},
+    {"key": "note-timeline", "type": "note", "label": "Acquisition timeline", "status": "confirmed", "source": "press releases", "notes": "1998 Energie founded, 2009 group formed, 2016 Reseaux created, 2024 Hydris and Cerbat acquired, 2025 Maroc announced."}
+  ]
+}

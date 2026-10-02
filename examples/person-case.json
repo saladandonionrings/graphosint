@@ -1,0 +1,78 @@
+{
+  "case": "Camille Berthier (test fixture)",
+  "disclaimer": "Fictional test data. Every name, handle, address, email, phone number and IP is invented. IPs use the RFC 5737 documentation ranges, domains use RFC 2606 example domains, phone numbers use the ARCEP fiction range.",
+  "exported_at": "2026-10-02",
+  "nodes": [
+    {"key": "camille berthier", "type": "target", "label": "Camille Berthier", "status": "confirmed", "source": "operator tasking", "notes": "Fictional subject. Graphic designer, Lyon. Born 1991. Used as the root of the people-centric test fixture."},
+
+    {"key": "camille.berthier@example.com", "type": "email", "status": "confirmed", "source": "portfolio site footer", "notes": "Primary address, published on the subject's own portfolio."},
+    {"key": "c.berthier@example.net", "type": "email", "status": "searched", "source": "forum signature", "notes": "Secondary address. Appears once in a public forum signature, never corroborated elsewhere."},
+    {"key": "berthier.pro@example.org", "type": "email", "status": "dead", "source": "archived page", "notes": "Address bounces: domain no longer accepts mail. Kept for completeness."},
+
+    {"key": "kamiberth", "type": "username", "status": "confirmed", "source": "cross-platform match", "notes": "Main handle. Consistent avatar and bio across two platforms."},
+    {"key": "kami_b", "type": "username", "status": "candidate", "source": "forum profile", "notes": "Underscore variant. Same city in the profile, but no hard selector linking it to the subject."},
+    {"key": "berthier.design", "type": "username", "status": "dead", "source": "archived page", "notes": "Handle released: now a generic placeholder page on every platform tested."},
+
+    {"key": "mastodon:kamiberth", "type": "account", "label": "Mastodon @kamiberth", "value": "https://social.example.org/@kamiberth", "status": "confirmed", "source": "http probe", "notes": "Live profile. Display name 'Camille B.', 412 followers, links back to the portfolio domain."},
+    {"key": "forum:kami_b", "type": "account", "label": "Forum profile kami_b", "value": "https://forum.example.net/u/kami_b", "status": "candidate", "source": "http probe", "notes": "Active since 2019. Location field reads 'Lyon'. No avatar match."},
+    {"key": "repo:kamiberth", "type": "account", "label": "Code host kamiberth", "value": "https://code.example.net/kamiberth", "status": "dead", "source": "http probe", "notes": "404. Handle appears in an archived page from 2021 only."},
+
+    {"key": "+33 6 39 98 00 12", "type": "phone", "status": "confirmed", "source": "invoice PDF metadata", "notes": "Mobile listed on a public invoice template. ARCEP fiction range, not a routable number."},
+    {"key": "+33 4 00 00 00 00", "type": "phone", "status": "searched", "source": "company listing", "notes": "Landline on the employer's public listing. Shared line, not personal."},
+
+    {"key": "12 rue des Lilas, 69007 Lyon", "type": "address", "label": "Home address (Lyon 7e)", "status": "candidate", "source": "parcel label photo", "notes": "Partially visible on a photo posted publicly. Street and arrondissement legible, number inferred."},
+    {"key": "8 quai Saint-Antoine, 69002 Lyon", "type": "address", "label": "Studio address (Lyon 2e)", "status": "confirmed", "source": "company registry", "notes": "Registered address of the employer, also given as the subject's business contact."},
+
+    {"key": "192.0.2.57", "type": "ip", "status": "candidate", "source": "forum post header", "notes": "Seen in a leaked forum header dump. Residential ISP range, geolocates to the right metro area."},
+    {"key": "198.51.100.23", "type": "ip", "status": "dead", "source": "forum post header", "notes": "Commercial VPN exit node, shared by thousands of users. Not attributable."},
+
+    {"key": "atelier mistral", "type": "employer", "label": "Atelier Mistral SARL", "status": "confirmed", "source": "company registry", "notes": "Design studio, 4 employees. The subject is listed as an associate."},
+
+    {"key": "paul berthier", "type": "person", "label": "Paul Berthier", "status": "confirmed", "source": "public obituary notice", "notes": "Father. Named alongside the subject in a family announcement."},
+    {"key": "helene berthier", "type": "person", "label": "Helene Berthier", "status": "confirmed", "source": "public obituary notice", "notes": "Mother. Same announcement."},
+    {"key": "lucie berthier", "type": "person", "label": "Lucie Berthier", "status": "confirmed", "source": "social graph", "notes": "Sister. Mutual tagging on public posts over several years."},
+    {"key": "theo marchand", "type": "person", "label": "Theo Marchand", "status": "candidate", "source": "social graph", "notes": "Possible partner. Shared holiday photos, no declared relationship."},
+
+    {"key": "iban", "type": "bank", "label": "FR76 XXXX XXXX XXXX 1234", "status": "searched", "source": "invoice PDF", "notes": "Partial IBAN on a public invoice template. Last four digits only, bank not identified."},
+
+    {"key": "note-dob", "type": "note", "label": "Date of birth: 14/03/1991", "status": "confirmed", "source": "two independent sources", "notes": "Consistent across the company registry entry and a public congratulations post."},
+    {"key": "note-vpn", "type": "note", "label": "VPN usage pattern", "status": "confirmed", "source": "analysis", "notes": "Posts between 2019 and 2021 come from a residential range, everything after mid-2021 comes from VPN exits. Behaviour changed, not identity."}
+  ],
+  "edges": [
+    {"source": "camille berthier", "target": "camille.berthier@example.com", "label": "email", "confidence": "high"},
+    {"source": "camille berthier", "target": "c.berthier@example.net", "label": "email (unconfirmed)", "confidence": "low"},
+    {"source": "camille berthier", "target": "berthier.pro@example.org", "label": "email (dead)", "confidence": "medium"},
+
+    {"source": "camille berthier", "target": "kamiberth", "label": "uses alias", "confidence": "high"},
+    {"source": "camille berthier", "target": "kami_b", "label": "possible alias", "confidence": "low"},
+    {"source": "camille berthier", "target": "berthier.design", "label": "former alias", "confidence": "medium"},
+
+    {"source": "kamiberth", "target": "mastodon:kamiberth", "label": "profile", "confidence": "high"},
+    {"source": "kami_b", "target": "forum:kami_b", "label": "profile", "confidence": "medium"},
+    {"source": "berthier.design", "target": "repo:kamiberth", "label": "account (gone)", "confidence": "low"},
+
+    {"source": "camille.berthier@example.com", "target": "mastodon:kamiberth", "label": "contact on profile", "confidence": "high"},
+
+    {"source": "camille berthier", "target": "+33 6 39 98 00 12", "label": "phone", "confidence": "high"},
+    {"source": "atelier mistral", "target": "+33 4 00 00 00 00", "label": "phone (shared line)", "confidence": "high"},
+
+    {"source": "camille berthier", "target": "12 rue des Lilas, 69007 Lyon", "label": "lives at", "confidence": "low"},
+    {"source": "camille berthier", "target": "8 quai Saint-Antoine, 69002 Lyon", "label": "address (work)", "confidence": "high"},
+    {"source": "atelier mistral", "target": "8 quai Saint-Antoine, 69002 Lyon", "label": "registered address", "confidence": "high"},
+
+    {"source": "forum:kami_b", "target": "192.0.2.57", "label": "posted from", "confidence": "medium"},
+    {"source": "forum:kami_b", "target": "198.51.100.23", "label": "posted from (VPN)", "confidence": "low"},
+    {"source": "note-vpn", "target": "198.51.100.23", "label": "supports", "confidence": "high"},
+
+    {"source": "camille berthier", "target": "atelier mistral", "label": "works at", "confidence": "high"},
+    {"source": "camille berthier", "target": "iban", "label": "bank account (partial)", "confidence": "medium"},
+
+    {"source": "camille berthier", "target": "paul berthier", "label": "father", "confidence": "high"},
+    {"source": "camille berthier", "target": "helene berthier", "label": "mother", "confidence": "high"},
+    {"source": "camille berthier", "target": "lucie berthier", "label": "sister", "confidence": "high"},
+    {"source": "camille berthier", "target": "theo marchand", "label": "spouse (unconfirmed)", "confidence": "low"},
+    {"source": "paul berthier", "target": "helene berthier", "label": "spouse", "confidence": "high"},
+
+    {"source": "camille berthier", "target": "note-dob", "label": "date of birth", "confidence": "high"}
+  ]
+}
